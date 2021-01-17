@@ -48,9 +48,9 @@ __version__ = "v0.210117"
 import os
 import sys
 import time
+from pprint import pprint
 import argparse
 import logging, logging.handlers
-import wave
 import traceback
 
 from PyQt5.QtGui import (
@@ -75,7 +75,6 @@ from PyQt5.QtCore import (
     pyqtSlot,
     pyqtSignal
 )
-
 
 import irsdk
 import configobj
@@ -243,8 +242,8 @@ class MainWindow(QMainWindow):
             if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
                 self.driver = dvr
                 break
-        print(self.driver)
-        self.iratingField.setText(self.driver['IRating'])
+        pprint(self.driver)
+        self.iratingField.setText(f"{str(self.driver['IRating']):,}")
 
     def onDisconnection(self):
         self.ir_connected = False
