@@ -49,17 +49,36 @@ import os
 import sys
 import time
 import argparse
-import logging, logging.handlers
+import logging
+import wave
+import traceback
 
-import configobj
-from PyQt5.QtCore import (
-    QThread,
-    QObject,
-    pyqtSignal,
-    pyqtSlot
+from PyQt5.QtGui import (
+    QFont
 )
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QLabel,
+    QTextEdit,
+    QPushButton,
+    QLineEdit,
+    QGridLayout,
+    QStatusBar
+)
+from PyQt5.QtCore import (
+    QObject,
+    QRunnable,
+    QThreadPool,
+    QTimer,
+    pyqtSlot,
+    pyqtSignal
+)
+
+
+import irsdk
+import configobj
 
 def set_font(size=14, bold=False):
     font = QFont()
@@ -68,106 +87,170 @@ def set_font(size=14, bold=False):
     return font
 
 
-class Worker(QObject):
-    status = pyqtSignal()
+class WorkerSignals(QObject):
+    '''
+    Defines the signals available from a running worker thread.
 
-    def __init__(self):
+    Supported signals are:
+
+    finished
+        No data
+    
+    error
+        `tuple` (exctype, value, traceback.format_exc() )
+    
+    result
+        `object` data returned from processing, anything
+
+    progress
+        `int` indicating % progress 
+
+    '''
+    finished = pyqtSignal()
+    error = pyqtSignal(tuple)
+    result = pyqtSignal(object)
+    #progress = pyqtSignal(int)
+
+
+class Worker(QRunnable):
+    '''
+    Worker thread
+
+    Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
+
+    :param callback: The function callback to run on this worker thread. Supplied args and 
+                     kwargs will be passed through to the runner.
+    :type callback: function
+    :param args: Arguments to pass to the callback function
+    :param kwargs: Keywords to pass to the callback function
+
+    '''
+
+    def __init__(self, fn, *args, **kwargs):
         super(Worker, self).__init__()
-        self.var = "things"
+
+        # Store constructor arguments (re-used for processing)
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+        self.signals = WorkerSignals()    
+
+        # Add the callback to our kwargs
+        #self.kwargs['progress_callback'] = self.signals.progress        
 
     @pyqtSlot()
     def run(self):
-        print("worker processing")
-        time.sleep(2)
+        '''
+        Initialise the runner function with passed args, kwargs.
+        '''
+        
+        # Retrieve args/kwargs here; and fire processing using them
+        try:
+            result = self.fn(*self.args, **self.kwargs)
+        except:
+            traceback.print_exc()
+            exctype, value = sys.exc_info()[:2]
+            self.signals.error.emit((exctype, value, traceback.format_exc()))
+        else:
+            self.signals.result.emit(result)  # Return the result of the processing
+        finally:
+            self.signals.finished.emit()  # Done
+        
 
+class MainWindow(QMainWindow):
 
-class App(QMainWindow):
+    def __init__(self, *args, **kwargs):
+        super(MainWindow, self).__init__(*args, **kwargs)
+    
+        self.counter = 0
 
-    def __init__(self, parent=None):
-        super(App, self).__init__(parent)
+        self.setWindowTitle("LaMetric iRacing Data Sender")
 
-        self.version = "{}: {}".format(__program__, __version__)
-        if args.debug:
-            print(self.version)
+        iratingLabel = QLabel('iRating')
+        iratingLabel.setFont(set_font(bold=True))
 
-        self.setStatusBarState("info", "Waiting")
-        self.widgets = Widgets(self)
-        self.setCentralWidget(self.widgets)
+        self.iratingField = QLineEdit()
+        self.iratingField.setReadOnly(True)
+        self.iratingField.setText("")
+        self.iratingField.setFont(set_font())
 
-        self.setGeometry(300, 300, 400, 450)
-        self.setWindowTitle('python-skeleton-qt5')
+        layout = QGridLayout()
+        layout.setColumnMinimumWidth(1, 70)
+
+        layout.setSpacing(10)
+
+        layout.addWidget(iratingLabel, 1, 0, 1, 1)
+        layout.addWidget(self.iratingField, 1, 1, 1, 3)
+
+        w = QWidget()
+        w.setLayout(layout)
+    
+        self.setCentralWidget(w)
+    
         self.show()
 
-    def setStatusBarState(self, state, msg):
-        if state == "info":
-            bgcolour = "rgba(0,0,100,200)"
-        elif state == "error":
-            bgcolour = "rgba(150,0,0,200)"
-        elif state == "success":
-            bgcolour = "rgba(0,150,0,200)"
-        else:
-            bgcolour = "rgba(50,50,50,200)"
-
         sb = QStatusBar()
-        sb.setStyleSheet("QStatusBar{{padding-left:8px;padding-bottom:2px;background:{};color:white;font-weight:bold;}}".format(bgcolour))
+        sb.setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
         sb.setFixedHeight(20)
         self.setStatusBar(sb)
-        self.statusBar().showMessage("STATUS: {}".format(msg))
+        self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
+
+        self.ir = irsdk.IRSDK()
+
+        self.ir_connected = False
+        self.car_in_world = False
+
+        self.threadpool = QThreadPool()
+
+        self.timerConnectionMonitor = QTimer()
+        self.timerConnectionMonitor.setInterval(1000)
+        self.timerConnectionMonitor.timeout.connect(self.irsdkConnectionMonitor)
+        self.timerConnectionMonitor.start()
 
 
-class Widgets(QWidget):
+    def connection_check(self):
+        if self.ir.is_connected:
+            return True
+        else:
+            self.ir.startup(silent=True)
+            try:
+                if self.ir.is_connected:
+                    return True
+                else:            
+                    return False
+            except AttributeError:
+                return False
+             
+    def connection_controller(self, now_connected):
+        if now_connected and not self.ir_connected:
+            self.onConnection()
+        elif not now_connected and self.ir_connected:
+            self.onDisconnection()
+ 
+    def irsdkConnectionMonitor(self):
+        monitor_worker = Worker(self.connection_check)
+        monitor_worker.signals.result.connect(self.connection_controller)
+        
+        self.threadpool.start(monitor_worker)
 
-    def __init__(self, parent):
-        QWidget.__init__(self, parent)
 
-        self.statusBar = parent.statusBar
+    def onConnection(self):
+        self.ir_connected = True
+        self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
+        self.statusBar().showMessage(('STATUS: iRacing client detected.'))
 
-        self.initUI()
+        for driver in self.ir['DriverInfo']['Drivers']:
+            if driver['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
+                car = driver['CarPath'].lower()
+                car_full = driver['CarScreenName']
+                break
+        print(self.ir)
+        self.iratingField.setText(self.ir['WeekendInfo']['TrackName'])
 
-    def startWorker(self):
-        self.worker = Worker()
-        self.thread_worker = QThread()
-
-        self.worker.status.connect(self.onStatusChange)
-        self.worker.moveToThread(self.thread_worker)
-        self.thread_worker.started.connect(self.worker.run)
-        self.thread_worker.start()
-
-    def initUI(self):
-        label = QLabel('lorem')
-        label.setFont(set_font(bold=True))
-
-        self.field = QLineEdit()
-        self.field.setReadOnly(True)
-        self.field.setText("")
-        self.field.setFont(set_font())
-        self.saveBtn = QPushButton('Save', self)
-        self.saveBtn.clicked.connect(self.save)
-        self.cancelBtn = QPushButton('Cancel', self)
-        self.cancelBtn.clicked.connect(self.cancel)
-
-        grid = QGridLayout()
-        grid.setColumnMinimumWidth(1, 70)
-
-        grid.setSpacing(10)
-
-        grid.addWidget(label, 1, 0, 1, 1)
-        grid.addWidget(self.field, 1, 1, 1, 3)
-
-        grid.addWidget(self.saveBtn, 2, 0, 1, 1)
-        grid.addWidget(self.cancelBtn, 2, 1, 1, 1)
-
-        self.setLayout(grid)
-
-    def onStatusChange(self, i):
-        app.setStatusBarState("info", "test")
-
-    def save(self):
-        app.setStatusBarState("success", "saved")
-
-    def cancel(self):
-        app.setStatusBarState("error", "cancelled")
-
+    def onDisconnection(self):
+        self.ir_connected = False
+        self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
+        self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
 
 def parse_args(argv):
     """ Read in any command line options and return them
@@ -233,7 +316,6 @@ if __name__ == '__main__':
         config.filename = args.configfile
 
         config['Options'] = {}
-        config['Options']['things'] = 'stuff'
         config.write()
 
     # try to read in the config
@@ -243,8 +325,7 @@ if __name__ == '__main__':
     except (IOError, KeyError, AttributeError) as e:
         print("Unable to successfully read config file: %s" % args.configfile)
         sys.exit(0)
-
-    qapp = QApplication(sys.argv)
-    app = App()
-
-    sys.exit(qapp.exec_())
+    
+    app = QApplication([])
+    window = MainWindow()
+    sys.exit(app.exec_())
