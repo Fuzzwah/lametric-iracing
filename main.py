@@ -162,7 +162,7 @@ class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
     
-        self.counter = 0
+        self.driver = None
 
         self.setWindowTitle("LaMetric iRacing Data Sender")
 
@@ -239,13 +239,12 @@ class MainWindow(QMainWindow):
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
         self.statusBar().showMessage(('STATUS: iRacing client detected.'))
 
-        for driver in self.ir['DriverInfo']['Drivers']:
-            if driver['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
-                car = driver['CarPath'].lower()
-                car_full = driver['CarScreenName']
+        for dvr in self.ir['DriverInfo']['Drivers']:
+            if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
+                self.driver = dvr
                 break
-        print(self.ir['DriverInfo']['Drivers'])
-        self.iratingField.setText(self.ir['WeekendInfo']['TrackName'])
+        print(self.driver)
+        self.iratingField.setText(self.driver['IRating'])
 
     def onDisconnection(self):
         self.ir_connected = False
