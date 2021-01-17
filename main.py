@@ -167,11 +167,17 @@ class MainWindow(QMainWindow):
 
         iratingLabel = QLabel('iRating')
         iratingLabel.setFont(set_font(bold=True))
-
         self.iratingField = QLineEdit()
         self.iratingField.setReadOnly(True)
         self.iratingField.setText("")
         self.iratingField.setFont(set_font())
+
+        licenseLabel = QLabel('License')
+        licenseLabel.setFont(set_font(bold=True))
+        self.licenseField = QLineEdit()
+        self.licenseField.setReadOnly(True)
+        self.licenseField.setText("")
+        self.licenseField.setFont(set_font())
 
         layout = QGridLayout()
         layout.setColumnMinimumWidth(1, 70)
@@ -180,6 +186,8 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(iratingLabel, 1, 0, 1, 1)
         layout.addWidget(self.iratingField, 1, 1, 1, 3)
+        layout.addWidget(licenseLabel, 2, 0, 1, 1)
+        layout.addWidget(self.licenseField, 2, 1, 1, 3)
 
         w = QWidget()
         w.setLayout(layout)
@@ -206,7 +214,6 @@ class MainWindow(QMainWindow):
         self.timerConnectionMonitor.timeout.connect(self.irsdkConnectionMonitor)
         self.timerConnectionMonitor.start()
 
-
     def connection_check(self):
         if self.ir.is_connected:
             return True
@@ -232,7 +239,6 @@ class MainWindow(QMainWindow):
         
         self.threadpool.start(monitor_worker)
 
-
     def onConnection(self):
         self.ir_connected = True
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
@@ -242,8 +248,9 @@ class MainWindow(QMainWindow):
             if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
                 self.driver = dvr
                 break
-        pprint(self.driver)
+        #pprint(self.driver)
         self.iratingField.setText(f"{self.driver['IRating']:,}")
+        self.licenseField.setText(f"{self.driver['LicString']}")
 
     def onDisconnection(self):
         self.ir_connected = False
