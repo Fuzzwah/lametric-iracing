@@ -244,7 +244,7 @@ class MainWindow(QMainWindow):
                 car = driver['CarPath'].lower()
                 car_full = driver['CarScreenName']
                 break
-        print(self.ir)
+        print(self.ir['DriverInfo']['Drivers'])
         self.iratingField.setText(self.ir['WeekendInfo']['TrackName'])
 
     def onDisconnection(self):
