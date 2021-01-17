@@ -243,7 +243,7 @@ class MainWindow(QMainWindow):
                 self.driver = dvr
                 break
         pprint(self.driver)
-        self.iratingField.setText(f"{str(self.driver['IRating']):,}")
+        self.iratingField.setText(f"{self.driver['IRating']:,}")
 
     def onDisconnection(self):
         self.ir_connected = False
