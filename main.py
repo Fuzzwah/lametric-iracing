@@ -49,7 +49,7 @@ import os
 import sys
 import time
 import argparse
-import logging
+import logging, logging.handlers
 import wave
 import traceback
 
