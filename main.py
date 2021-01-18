@@ -202,6 +202,13 @@ class MainWindow(QMainWindow):
         self.licenseField.setText("")
         self.licenseField.setFont(set_font())
 
+        bestLapLabel = QLabel('Best Lap')
+        bestLapLabel.setFont(set_font(bold=True))
+        self.bestLapField = QLineEdit()
+        self.bestLapField.setReadOnly(True)
+        self.bestLapField.setText("")
+        self.bestLapField.setFont(set_font())
+
         layout = QGridLayout()
         layout.setColumnMinimumWidth(1, 70)
 
@@ -237,6 +244,10 @@ class MainWindow(QMainWindow):
         self.timerConnectionMonitor.timeout.connect(self.irsdkConnectionMonitor)
         self.timerConnectionMonitor.start()
 
+        self.timerBestLap = QTimer()
+        self.timerBestLap.setInterval(1)
+        self.timerBestLap.timeout.connect(self.best_lap)
+
     def connection_check(self):
         if self.ir.is_connected:
             return True
@@ -261,6 +272,18 @@ class MainWindow(QMainWindow):
         monitor_worker.signals.result.connect(self.connection_controller)
         
         self.threadpool.start(monitor_worker)
+
+    def best_lap_cycle(self):
+        return self.driver['LapBestLapTime']
+
+    def update_best_lap(self, value):
+        self.bestLapField.setText(f"{value}")
+
+    def best_lap(self):
+        bestlap_worker = Worker(self.best_lap_cycle)
+        bestlap_worker.signals.result.connect(self.update_best_lap)
+        
+        self.threadpool.start(bestlap_worker)
 
     def onConnection(self):
         self.ir_connected = True
