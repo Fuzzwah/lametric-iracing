@@ -181,7 +181,8 @@ class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
     
-        self.lametric_ip = ""
+        self.lametric_ip = "10.1.1.26"
+        self.lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
         self.lametric_api_key = ""
         self.driver = None
 
@@ -274,14 +275,14 @@ class MainWindow(QMainWindow):
         self.iratingField.setText(f"{self.driver['IRating']:,}")
         self.licenseField.setText(f"{self.driver['LicString']}")
 
-        data = {
+        data = """{
             "model": {
                     "frames": [{
                         "icon": "i43085",
                         "text": f"{self.driver['IRating']:,}"
                     }]
                 }
-            }
+            }"""
         self.send_notification(data)
 
     def onDisconnection(self):
@@ -290,11 +291,13 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
 
     def send_notification(self, data):
+            pprint(data)
+
             headers = {"Content-Type": "application/json; charset=utf-8"}
             basicAuthCredentials = ("dev", self.lametric_api_key)
             try:
                 response = requests.post(
-                    self.lametric_ip,
+                    self.lametric_url,
                     headers=headers,
                     auth=basicAuthCredentials,
                     data=data.encode("utf-8"),
@@ -302,15 +305,16 @@ class MainWindow(QMainWindow):
                 )
                 # for debugging purpose
                 pprint(response)
-                pprint(data)
             except requests.exceptions.RequestException as err:
-                print("OOps: Something Else", err)
+                print("Oops: Something Else: ", err)
+            except requests.exceptions.ConnectionRefusedError as err:
+                print("Connection Refused: ", err)
             except requests.exceptions.HTTPError as errh:
-                print("Http Error:", errh)
+                print("Http Error: ", errh)
             except requests.exceptions.ConnectionError as errc:
-                print("Error Connecting:", errc)
+                print("Error Connecting: ", errc)
             except requests.exceptions.Timeout as errt:
-                print("Timeout Error:", errt)
+                print("Timeout: ", errt)
 
 def parse_args(argv):
     """ Read in any command line options and return them
@@ -319,8 +323,6 @@ def parse_args(argv):
     # Define and parse command line arguments
     parser = argparse.ArgumentParser(description=__program__)
     parser.add_argument("--logfile", help="file to write log to", default="%s.log" % __program__)
-    parser.add_argument("--configfile", help="use a different config file", default="config.ini")
-    parser.add_argument("--newconfig", action='store_true', default=False)
     parser.add_argument("--debug", action='store_true', default=False)
 
     # uncomment this if you want to force at least one command line option
