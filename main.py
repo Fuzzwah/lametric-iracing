@@ -78,6 +78,12 @@ from PyQt5.QtCore import (
 
 import irsdk
 import configobj
+import requests
+
+CLIENT_ID = "5cf91c2e-6ffe-befc-d1dc-036f22ead534"
+CLIENT_SECRET = "JDEkbEVLLi4wLmQkeGVJdTE3RzczdC5QaG9YcGZVMlp5MQ=="
+
+DEVICE_URL = ""
 
 def set_font(size=14, bold=False):
     font = QFont()
@@ -251,6 +257,17 @@ class MainWindow(QMainWindow):
         #pprint(self.driver)
         self.iratingField.setText(f"{self.driver['IRating']:,}")
         self.licenseField.setText(f"{self.driver['LicString']}")
+
+        data = {
+            "model": {
+                    "frames": [{
+                        "icon": "i43085",
+                        "text": f"{self.driver['IRating']:,}"
+                    }]
+                }
+            }
+        response = requests.post(DEVICE_URL, data)
+        print(response)
 
     def onDisconnection(self):
         self.ir_connected = False

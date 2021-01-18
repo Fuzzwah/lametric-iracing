@@ -1,3 +1,4 @@
 configobj
 pyqt5
 pyirsdk
+requests
