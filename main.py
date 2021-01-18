@@ -72,6 +72,7 @@ from PyQt5.QtCore import (
     QRunnable,
     QThreadPool,
     QTimer,
+    QSettings,
     pyqtSlot,
     pyqtSignal
 )
@@ -80,10 +81,6 @@ import irsdk
 import configobj
 import requests
 
-CLIENT_ID = "5cf91c2e-6ffe-befc-d1dc-036f22ead534"
-CLIENT_SECRET = "JDEkbEVLLi4wLmQkeGVJdTE3RzczdC5QaG9YcGZVMlp5MQ=="
-
-DEVICE_URL = ""
 
 def set_font(size=14, bold=False):
     font = QFont()
@@ -162,11 +159,30 @@ class Worker(QRunnable):
             self.signals.finished.emit()  # Done
         
 
+class Widget(QWidget):
+    def __init__(self):
+        super().__init__()
+ 
+        self.settings = QSettings(os.path.join(os.path.dirname(os.path.abspath(__file__)), "settings.ini"), QSettings.IniFormat)
+        print(self.settings.fileName())
+        try:
+            self.lametric_ip(self.settings.value('lametric_ip'))
+            self.lametric_api_key(self.settings.value('lametric_api_key'))
+        except:
+            pass
+ 
+    def closeEvent(self, event):
+        self.settings.setValue('lametric_ip', self.lametric_ip())
+        self.settings.setValue('lametric_api_key', self.lametric_api_key())
+
+
 class MainWindow(QMainWindow):
 
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
     
+        self.lametric_ip = ""
+        self.lametric_api_key = ""
         self.driver = None
 
         self.setWindowTitle("LaMetric iRacing Data Sender")
@@ -266,13 +282,35 @@ class MainWindow(QMainWindow):
                     }]
                 }
             }
-        response = requests.post(DEVICE_URL, data)
-        print(response)
+        self.send_notification(data)
 
     def onDisconnection(self):
         self.ir_connected = False
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
+
+    def send_notification(self, data):
+            headers = {"Content-Type": "application/json; charset=utf-8"}
+            basicAuthCredentials = ("dev", self.lametric_api_key)
+            try:
+                response = requests.post(
+                    self.lametric_ip,
+                    headers=headers,
+                    auth=basicAuthCredentials,
+                    data=data.encode("utf-8"),
+                    timeout=3,
+                )
+                # for debugging purpose
+                pprint(response)
+                pprint(data)
+            except requests.exceptions.RequestException as err:
+                print("OOps: Something Else", err)
+            except requests.exceptions.HTTPError as errh:
+                print("Http Error:", errh)
+            except requests.exceptions.ConnectionError as errc:
+                print("Error Connecting:", errc)
+            except requests.exceptions.Timeout as errt:
+                print("Timeout Error:", errt)
 
 def parse_args(argv):
     """ Read in any command line options and return them
