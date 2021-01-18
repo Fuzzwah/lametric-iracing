@@ -4,10 +4,12 @@
 
 This is a Windows application that collects various pieces of data from the iRacing API and sends them via push notifcations to be displayed on a LaMetic Time device.
 
-## Technical details
+## Technical Details
 
-The GUI for the application is created using Qt5, the information is collected from iRacing using the `pyirsdk` library. The data is formatted in the json required by the LaMetric device, and received by a companion app that I have released on the LaMetric app store named `iRacing Info Display`.
+The GUI for the application is created using Qt5, the information is collected from iRacing using the `pyirsdk` library. The data is formatted in the json required by the LaMetric device, and sent to the clock using a HTTP POST call via `requests`.
 
-## Requirements
+## Minimum Viable Product
 
-You will need to purchase, install, and configure the `iRacing Info Display` app from the LaMetic store.
+[x] Simple GUI
+[x] iRacing API rigged up to collect iRating and License / Safety Rating info
+[x] HTTP POST the iRating value to the device using hard coded address and key
