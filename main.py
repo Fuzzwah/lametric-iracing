@@ -78,7 +78,6 @@ from PyQt5.QtCore import (
 )
 
 import irsdk
-import configobj
 import requests
 
 
@@ -421,21 +420,6 @@ if __name__ == '__main__':
     # connect to the logger we set up
     log = logging.getLogger(__name__)
 
-    if not os.path.isfile(args.configfile) or args.newconfig:
-        config = configobj.ConfigObj()
-        config.filename = args.configfile
-
-        config['Options'] = {}
-        config.write()
-
-    # try to read in the config
-    try:
-        config = configobj.ConfigObj(args.configfile)
-
-    except (IOError, KeyError, AttributeError) as e:
-        print("Unable to successfully read config file: %s" % args.configfile)
-        sys.exit(0)
-    
     app = QApplication([])
     window = MainWindow()
     sys.exit(app.exec_())
