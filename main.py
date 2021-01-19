@@ -224,7 +224,7 @@ class MainWindow(QMainWindow):
 
         self.debugBtn = QPushButton('Debug')
         self.debugBtn.clicked.connect(self.debug)
-        layout.addWidget(self.saveBtn, 4, 1, 1, 1)
+        layout.addWidget(self.debugBtn, 4, 1, 1, 1)
 
         w = QWidget()
         w.setLayout(layout)
