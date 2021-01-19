@@ -179,11 +179,10 @@ class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
 
-        if self.args.ipaddress:
-            self.lametric_ip = self.args.ipaddress
-        if self.args.key:
-            self.lametric_api_key = self.args.key
-        self.lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
+        self.lametric_ip = None
+        self.lametric_api_key = None
+        if self.lametric_ip:
+            self.lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
 
         self.driver = None
 
