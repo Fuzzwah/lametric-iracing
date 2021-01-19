@@ -343,8 +343,7 @@ class MainWindow(QMainWindow):
                     json=data,
                     timeout=1,
                 )
-                if self.args.debug:
-                    pprint(response)
+                pprint(response)
             except requests.exceptions.RequestException as err:
                 print("Oops: Something Else: ", err)
             except requests.exceptions.ConnectionRefusedError as err:
@@ -368,10 +367,7 @@ def setup_logging():
     # set up all the logging stuff
     LOG_FILENAME = os.path.join(basepath, "lametric.log")
 
-    if args.debug:
-        LOG_LEVEL = logging.DEBUG
-    else:
-        LOG_LEVEL = logging.INFO  # Could be e.g. "DEBUG" or "WARNING"
+    LOG_LEVEL = logging.WARNING  # Could be e.g. "DEBUG" or "WARNING"
 
     # Configure logging to log to a file, making a new file at midnight and keeping the last 3 day's data
     # Give the logger a unique name (good practice)
