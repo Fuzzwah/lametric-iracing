@@ -180,44 +180,55 @@ class MainWindow(QMainWindow):
 
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
-    
-        self.lametric_ip = "10.1.1.26"
+
+        if self.args.ipaddress:
+            self.lametric_ip = self.args.ipaddress
+        if self.args.key:
+            self.lametric_api_key = self.args.key
         self.lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
-        self.lametric_api_key = ""
+
         self.driver = None
 
         self.setWindowTitle("LaMetric iRacing Data Sender")
 
+        layout = QGridLayout()
+        layout.setColumnMinimumWidth(1, 70)
+        layout.setSpacing(10)
+
         iratingLabel = QLabel('iRating')
         iratingLabel.setFont(set_font(bold=True))
+        layout.addWidget(iratingLabel, 1, 0, 1, 1)
+
         self.iratingField = QLineEdit()
         self.iratingField.setReadOnly(True)
         self.iratingField.setText("")
         self.iratingField.setFont(set_font())
+        layout.addWidget(self.iratingField, 1, 1, 1, 3)
 
         licenseLabel = QLabel('License')
         licenseLabel.setFont(set_font(bold=True))
+        layout.addWidget(licenseLabel, 2, 0, 1, 1)
+
         self.licenseField = QLineEdit()
         self.licenseField.setReadOnly(True)
         self.licenseField.setText("")
         self.licenseField.setFont(set_font())
+        layout.addWidget(self.licenseField, 2, 1, 1, 3)
 
         bestLapLabel = QLabel('Best Lap')
         bestLapLabel.setFont(set_font(bold=True))
+        layout.addWidget(bestLapLabel, 3, 0, 1, 1)
+
         self.bestLapField = QLineEdit()
         self.bestLapField.setReadOnly(True)
         self.bestLapField.setText("")
         self.bestLapField.setFont(set_font())
+        layout.addWidget(self.bestLapField, 3, 1, 1, 3)
 
-        layout = QGridLayout()
-        layout.setColumnMinimumWidth(1, 70)
-
-        layout.setSpacing(10)
-
-        layout.addWidget(iratingLabel, 1, 0, 1, 1)
-        layout.addWidget(self.iratingField, 1, 1, 1, 3)
-        layout.addWidget(licenseLabel, 2, 0, 1, 1)
-        layout.addWidget(self.licenseField, 2, 1, 1, 3)
+        if self.args.debug:
+            self.debugBtn = QPushButton('Debug')
+            self.debugBtn.clicked.connect(self.debug)
+            layout.addWidget(self.saveBtn, 4, 1, 1, 1)
 
         w = QWidget()
         w.setLayout(layout)
@@ -273,15 +284,37 @@ class MainWindow(QMainWindow):
         
         self.threadpool.start(monitor_worker)
 
-    def best_lap_cycle(self):
-        return self.driver['LapBestLapTime']
+    def data_collection_cycle(self):
+        data = {
+            "IRating": f"{self.driver['IRating']:,}",
+            "LicString": self.driver['LicString'],
+            "LapBestLapTime": self.driver['LapBestLapTime']
+        }
+        return data
 
-    def update_best_lap(self, value):
-        self.bestLapField.setText(f"{value}")
+    def update(self, data):
+        if self.iratingField.text is not f"{data['IRating']}":
+            self.iratingField.setText(f"{data['IRating']}")
+        if self.licenseField.text is not f"{data['LicString']}":
+            self.licenseField.setText(f"{data['LicString']}")
+        if self.bestLapField.text is not f"{data['LapBestLapTime']}":
+            self.bestLapField.setText(f"{data['LapBestLapTime']}")
+
+        data = {
+            "model": {
+                    "frames": [{
+                        "icon": "i43085",
+                        "text": data['IRating']
+                    }]
+                }
+            }
+
+        if self.lametric_ip and self.lametric_api_key:
+            self.send_notification(data)
 
     def best_lap(self):
-        bestlap_worker = Worker(self.best_lap_cycle)
-        bestlap_worker.signals.result.connect(self.update_best_lap)
+        bestlap_worker = Worker(self.data_collection_cycle)
+        bestlap_worker.signals.result.connect(self.update)
         
         self.threadpool.start(bestlap_worker)
 
@@ -294,19 +327,6 @@ class MainWindow(QMainWindow):
             if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
                 self.driver = dvr
                 break
-        #pprint(self.driver)
-        self.iratingField.setText(f"{self.driver['IRating']:,}")
-        self.licenseField.setText(f"{self.driver['LicString']}")
-
-        data = """{
-            "model": {
-                    "frames": [{
-                        "icon": "i43085",
-                        "text": f"{self.driver['IRating']:,}"
-                    }]
-                }
-            }"""
-        self.send_notification(data)
 
     def onDisconnection(self):
         self.ir_connected = False
@@ -323,11 +343,11 @@ class MainWindow(QMainWindow):
                     self.lametric_url,
                     headers=headers,
                     auth=basicAuthCredentials,
-                    data=data.encode("utf-8"),
-                    timeout=3,
+                    json=data,
+                    timeout=1,
                 )
-                # for debugging purpose
-                pprint(response)
+                if self.args.debug:
+                    pprint(response)
             except requests.exceptions.RequestException as err:
                 print("Oops: Something Else: ", err)
             except requests.exceptions.ConnectionRefusedError as err:
@@ -339,14 +359,19 @@ class MainWindow(QMainWindow):
             except requests.exceptions.Timeout as errt:
                 print("Timeout: ", errt)
 
+    def debug(self):
+        pprint(self.driver)
+
 def parse_args(argv):
     """ Read in any command line options and return them
     """
 
     # Define and parse command line arguments
     parser = argparse.ArgumentParser(description=__program__)
-    parser.add_argument("--logfile", help="file to write log to", default="%s.log" % __program__)
+    parser.add_argument("--logfile", help="file to write log to", default=f"{__program__}.log")
     parser.add_argument("--debug", action='store_true', default=False)
+    parser.add_argument("--ipaddress", help="the ip address of your LaMetric Time device")
+    parser.add_argument("--key", help="the developer key for your LaMetric Time device")
 
     # uncomment this if you want to force at least one command line option
     # if len(sys.argv)==1:
