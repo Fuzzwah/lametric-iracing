@@ -421,5 +421,5 @@ if __name__ == '__main__':
     log = logging.getLogger(__name__)
 
     app = QApplication([])
-    window = MainWindow()
+    window = MainWindow(args)
     sys.exit(app.exec_())
