@@ -49,7 +49,6 @@ import os
 import sys
 import time
 from pprint import pprint
-import argparse
 import logging, logging.handlers
 import traceback
 
@@ -224,10 +223,9 @@ class MainWindow(QMainWindow):
         self.bestLapField.setFont(set_font())
         layout.addWidget(self.bestLapField, 3, 1, 1, 3)
 
-        if self.args.debug:
-            self.debugBtn = QPushButton('Debug')
-            self.debugBtn.clicked.connect(self.debug)
-            layout.addWidget(self.saveBtn, 4, 1, 1, 1)
+        self.debugBtn = QPushButton('Debug')
+        self.debugBtn.clicked.connect(self.debug)
+        layout.addWidget(self.saveBtn, 4, 1, 1, 1)
 
         w = QWidget()
         w.setLayout(layout)
@@ -361,34 +359,14 @@ class MainWindow(QMainWindow):
     def debug(self):
         pprint(self.driver)
 
-def parse_args(argv):
-    """ Read in any command line options and return them
-    """
-
-    # Define and parse command line arguments
-    parser = argparse.ArgumentParser(description=__program__)
-    parser.add_argument("--logfile", help="file to write log to", default=f"{__program__}.log")
-    parser.add_argument("--debug", action='store_true', default=False)
-    parser.add_argument("--ipaddress", help="the ip address of your LaMetric Time device")
-    parser.add_argument("--key", help="the developer key for your LaMetric Time device")
-
-    # uncomment this if you want to force at least one command line option
-    # if len(sys.argv)==1:
-    #   parser.print_help()
-    #   sys.exit(1)
-
-    args = parser.parse_args()
-
-    return args
-
-def setup_logging(args):
+def setup_logging():
     """ Everything required when the application is first initialized
     """
 
     basepath = os.path.abspath(".")
 
     # set up all the logging stuff
-    LOG_FILENAME = os.path.join(basepath, "%s" % args.logfile)
+    LOG_FILENAME = os.path.join(basepath, "lametric.log")
 
     if args.debug:
         LOG_LEVEL = logging.DEBUG
@@ -411,15 +389,11 @@ def setup_logging(args):
 
 
 if __name__ == '__main__':
-    # call function to parse command line arguments
-    args = parse_args(sys.argv)
-
     # setup logging
-    setup_logging(args)
+    setup_logging()
 
     # connect to the logger we set up
     log = logging.getLogger(__name__)
-
     app = QApplication([])
-    window = MainWindow(args)
+    window = MainWindow()
     sys.exit(app.exec_())
