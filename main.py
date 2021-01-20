@@ -252,9 +252,9 @@ class MainWindow(QMainWindow):
         self.timerConnectionMonitor.timeout.connect(self.irsdkConnectionMonitor)
         self.timerConnectionMonitor.start()
 
-        self.timerBestLap = QTimer()
-        self.timerBestLap.setInterval(1)
-        self.timerBestLap.timeout.connect(self.best_lap)
+        self.timerMainCycle = QTimer()
+        self.timerMainCycle.setInterval(1)
+        self.timerMainCycle.timeout.connect(self.main_cycle)
 
     def connection_check(self):
         if self.ir.is_connected:
@@ -289,9 +289,13 @@ class MainWindow(QMainWindow):
         }
         return data
 
-    def update(self, data):
+    def process_data(self, data):
         if self.iratingField.text is not f"{data['IRating']}":
             self.iratingField.setText(f"{data['IRating']}")
+            data['model']['frames'].append({
+                        "icon": "i43085",
+                        "text": data['IRating']
+                    })
         if self.licenseField.text is not f"{data['LicString']}":
             self.licenseField.setText(f"{data['LicString']}")
         if self.bestLapField.text is not f"{data['LapBestLapTime']}":
@@ -369,21 +373,18 @@ class MainWindow(QMainWindow):
 
         data = {
             "model": {
-                    "frames": [{
-                        "icon": "i43085",
-                        "text": data['IRating']
-                    }]
+                    "frames": []
                 }
             }
 
         if self.lametric_ip and self.lametric_api_key:
             self.send_notification(data)
 
-    def best_lap(self):
-        bestlap_worker = Worker(self.data_collection_cycle)
-        bestlap_worker.signals.result.connect(self.update)
+    def main_cycle(self):
+        main_cycle_worker = Worker(self.data_collection_cycle)
+        main_cycle_worker.signals.result.connect(self.process_data)
         
-        self.threadpool.start(bestlap_worker)
+        self.threadpool.start(main_cycle_worker)
 
     def onConnection(self):
         self.ir_connected = True
