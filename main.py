@@ -283,17 +283,31 @@ class MainWindow(QMainWindow):
         self.threadpool.start(monitor_worker)
 
     def data_collection_cycle(self):
-        data = {
-            "IRating": f"{self.driver['IRating']:,}",
-            "LicString": self.driver['LicString'],
-            "LapBestLapTime": self.driver['LapBestLapTime']
-        }
+        data = {}
+        try:
+            data["IRating"] = f"{self.driver['IRating']:,}"
+        except KeyError:
+            pass
+        try:
+            data["LicString"] = self.driver['LicString']
+        except KeyError:
+            pass
+        try:
+            data["LapBestLapTime"] = self.driver['LapBestLapTime']
+        except KeyError:
+            pass
+
         return data
 
     def process_data(self, data):
+        json = {
+            'model': {
+                'frames': []
+            }
+        }
         if self.iratingField.text is not f"{data['IRating']}":
             self.iratingField.setText(f"{data['IRating']}")
-            data['model']['frames'].append({
+            json['model']['frames'].append({
                         "icon": "i43085",
                         "text": data['IRating']
                     })
@@ -372,14 +386,8 @@ class MainWindow(QMainWindow):
           
             self.last_flag = self.ir['SessionFlags']
 
-        data = {
-            "model": {
-                    "frames": []
-                }
-            }
-
         if self.lametric_ip and self.lametric_api_key:
-            self.send_notification(data)
+            self.send_notification(json)
 
     def main_cycle(self):
         main_cycle_worker = Worker(self.data_collection_cycle)
@@ -396,6 +404,7 @@ class MainWindow(QMainWindow):
             if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
                 self.driver = dvr
                 break
+        pprint(self.driver)
         self.timerMainCycle.start()
 
     def onDisconnection(self):
@@ -404,8 +413,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
         self.timerMainCycle.stop()
 
-    def send_notification(self, data):
-            pprint(data)
+    def send_notification(self, json):
+            pprint(json)
 
             headers = {"Content-Type": "application/json; charset=utf-8"}
             basicAuthCredentials = ("dev", self.lametric_api_key)
@@ -414,7 +423,7 @@ class MainWindow(QMainWindow):
                     self.lametric_url,
                     headers=headers,
                     auth=basicAuthCredentials,
-                    json=data,
+                    json=json,
                     timeout=1,
                 )
                 pprint(response)
