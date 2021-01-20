@@ -255,6 +255,7 @@ class MainWindow(QMainWindow):
         self.timerMainCycle = QTimer()
         self.timerMainCycle.setInterval(1)
         self.timerMainCycle.timeout.connect(self.main_cycle)
+        
 
     def connection_check(self):
         if self.ir.is_connected:
@@ -395,11 +396,13 @@ class MainWindow(QMainWindow):
             if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
                 self.driver = dvr
                 break
+        self.timerMainCycle.start()
 
     def onDisconnection(self):
         self.ir_connected = False
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
+        self.timerMainCycle.stop()
 
     def send_notification(self, data):
             pprint(data)
