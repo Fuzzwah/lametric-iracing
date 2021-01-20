@@ -293,7 +293,7 @@ class MainWindow(QMainWindow):
         except KeyError:
             pass
         try:
-            data["LapBestLapTime"] = self.driver['LapBestLapTime']
+            data["LapBestLapTime"] = self.ir['LapBestLapTime'][self.driver['CarIdx']]
         except KeyError:
             pass
 
@@ -405,6 +405,7 @@ class MainWindow(QMainWindow):
                 self.driver = dvr
                 break
         pprint(self.driver)
+        pprint(self.ir['LapBestLapTime'])
         self.timerMainCycle.start()
 
     def onDisconnection(self):
