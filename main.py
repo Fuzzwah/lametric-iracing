@@ -185,6 +185,7 @@ class MainWindow(QMainWindow):
             self.lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
 
         self.driver = None
+        self.last_flag = None
 
         self.setWindowTitle("LaMetric iRacing Data Sender")
 
@@ -296,6 +297,76 @@ class MainWindow(QMainWindow):
         if self.bestLapField.text is not f"{data['LapBestLapTime']}":
             self.bestLapField.setText(f"{data['LapBestLapTime']}")
 
+        if not self.last_flag == self.ir['SessionFlags']:
+            print("Flag Change")
+            print(f"Last: {self.last_flag}")
+            print(f"Current: {self.ir['SessionFlags']}")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.start_hidden:
+                print("Continuous green")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.checkered:
+                print("Checkered Flag")
+            
+            if self.ir['SessionFlags'] & irsdk.Flags.white:
+                print("White Flag")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.green:
+                print("Green flag")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.yellow:
+                print("Yellow flag")
+                    
+            if self.ir['SessionFlags'] & irsdk.Flags.red:
+                print("Red flag")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.blue:
+                print("Blue flag")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.debris:
+                print("Debris flag")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.crossed:
+                print("Crossed flags")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.yellow_waving:
+                print("Yellow waving flag")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.one_lap_to_green:
+                print("One lap to green")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.green_held:
+                print("Green flag held")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.ten_to_go:
+                print("Ten to go")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.five_to_go:
+                print("Five to go")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.random_waving:
+                print("Random waving flag")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.caution:
+                print("Caution Flag")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.caution_waving:
+                print("Caution waving Flag")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.black:
+                print("Black Flag")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.disqualify:
+                print("DQ Flag")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.furled:
+                print("Furled black Flag")
+
+            if self.ir['SessionFlags'] & irsdk.Flags.repair:
+                print("Meatball Flag")
+          
+            self.last_flag = self.ir['SessionFlags']
+
         data = {
             "model": {
                     "frames": [{
@@ -356,6 +427,7 @@ class MainWindow(QMainWindow):
 
     def debug(self):
         pprint(self.driver)
+        pprint(self.ir['SessionFlags'])
 
 def setup_logging():
     """ Everything required when the application is first initialized
