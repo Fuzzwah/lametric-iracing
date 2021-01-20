@@ -293,7 +293,7 @@ class MainWindow(QMainWindow):
         except KeyError:
             pass
         try:
-            data["LapBestLapTime"] = self.ir['LapBestLapTime'][self.driver['CarIdx']]
+            data["LapBestLapTime"] = self.ir['LapBestLapTime']
         except KeyError:
             pass
 
