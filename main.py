@@ -179,13 +179,14 @@ class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
 
-        self.lametric_ip = None
-        self.lametric_api_key = None
+        self.lametric_ip = '10.1.1.33'
+        self.lametric_api_key = 'e8dfee57a2832810c874b3fd9dc0985bb78d3d0e737823b64ebb80c1f5197ad2'
         if self.lametric_ip:
             self.lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
 
         self.driver = None
         self.last_flag = None
+        self.last_irating = None
 
         self.setWindowTitle("LaMetric iRacing Data Sender")
 
@@ -300,17 +301,22 @@ class MainWindow(QMainWindow):
         return data
 
     def process_data(self, data):
-        json = {
-            'model': {
-                'frames': []
-            }
-        }
-        if self.iratingField.text is not f"{data['IRating']}":
+        if self.last_irating != f"{data['IRating']}":
+            self.last_irating = f"{data['IRating']}"
             self.iratingField.setText(f"{data['IRating']}")
-            json['model']['frames'].append({
+            json = {
+                "priority": "info",
+                "icon_type":"none",
+                "model": {
+                    "cycles": 0,
+                    "frames": [{
                         "icon": "i43085",
                         "text": data['IRating']
-                    })
+                    }]
+                }
+            }
+            self.send_notification(json)
+
         if self.licenseField.text is not f"{data['LicString']}":
             self.licenseField.setText(f"{data['LicString']}")
         if self.bestLapField.text is not f"{data['LapBestLapTime']}":
@@ -383,11 +389,14 @@ class MainWindow(QMainWindow):
 
             if self.ir['SessionFlags'] & irsdk.Flags.repair:
                 print("Meatball Flag")
+                json['model']['frames'].append({
+                            "icon": "i43085",
+                            "text": "Meatball"
+                        })                
           
             self.last_flag = self.ir['SessionFlags']
 
-        if self.lametric_ip and self.lametric_api_key:
-            self.send_notification(json)
+        
 
     def main_cycle(self):
         main_cycle_worker = Worker(self.data_collection_cycle)
@@ -415,8 +424,7 @@ class MainWindow(QMainWindow):
         self.timerMainCycle.stop()
 
     def send_notification(self, json):
-            pprint(json)
-
+        if self.lametric_ip and self.lametric_api_key:
             headers = {"Content-Type": "application/json; charset=utf-8"}
             basicAuthCredentials = ("dev", self.lametric_api_key)
             try:
