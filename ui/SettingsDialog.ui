@@ -62,7 +62,7 @@
     </rect>
    </property>
    <property name="standardButtons">
-    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Save</set>
+    <set>QDialogButtonBox::Save</set>
    </property>
   </widget>
  </widget>

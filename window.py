@@ -307,6 +307,7 @@ class SaveWindow(QWidget):
     def __widgets_savedata(self):
         s = self.settings()
         for widget in self.__widgets_data:
+            print(widget.objectName())
             s.setValue(widget.objectName(), widget.get_value_())
 
         for widget in self.__widgets_size:
@@ -345,6 +346,7 @@ class Window(QMainWindow, SaveWindow):
         # Would work without this override.
         # But does not with Dialog.
         # So better explicit call on both classes.
+
         QMainWindow.closeEvent(self, e)
         SaveWindow.closeEvent(self, e)
 
@@ -373,14 +375,9 @@ class Dialog(QDialog, SaveWindow):
             QDialog.activateWindow(self)
 
         self.buttonBox.accepted.connect(self.save)
-        self.buttonBox.rejected.connect(self.reject)
 
     def save(self):
-        print("save")
-
-    def reject(self):
-        print("close")
-
+        self.close()
 
     def closeEvent(self, e):
         # Without explicit delegation it does not call SaveWindow.closeEvent.

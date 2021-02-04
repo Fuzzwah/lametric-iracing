@@ -59,6 +59,9 @@ class MyDialog(Dialog):
     def __init__(self):
         super(MyDialog, self).__init__("ui/SettingsDialog.ui")
 
+        self.register_widget(self.laMetricTimeIPLineEdit)
+        self.register_widget(self.aPIKeyLineEdit)
+
     def closeEvent(self, e):
         super().closeEvent(e)
         e.accept()
