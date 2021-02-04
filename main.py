@@ -166,12 +166,17 @@ class Widget(QWidget):
         try:
             self.lametric_ip(self.settings.value('lametric_ip'))
             self.lametric_api_key(self.settings.value('lametric_api_key'))
+            self.irating(self.settings.value('irating'))
+            self.license(self.settings.value('license'))
         except:
             pass
  
     def closeEvent(self, event):
         self.settings.setValue('lametric_ip', self.lametric_ip())
         self.settings.setValue('lametric_api_key', self.lametric_api_key())
+        self.settings.setValue('irating', self.irating())
+        self.settings.setValue('license', self.license())
+        self.settings.sync()
 
 
 class MainWindow(QMainWindow):
@@ -228,7 +233,7 @@ class MainWindow(QMainWindow):
         self.debugBtn.clicked.connect(self.debug)
         layout.addWidget(self.debugBtn, 4, 1, 1, 1)
 
-        w = QWidget()
+        w = Widget()
         w.setLayout(layout)
     
         self.setCentralWidget(w)
@@ -309,10 +314,15 @@ class MainWindow(QMainWindow):
                 "icon_type":"none",
                 "model": {
                     "cycles": 0,
-                    "frames": [{
-                        "icon": "i43085",
-                        "text": data['IRating']
-                    }]
+                    "frames": [
+                        {
+                            "icon": "i43085",
+                            "text": data['IRating']
+                        },
+                            "icon": "i43085",
+                            "text": data["LicString"]
+                        },
+                    ]
                 }
             }
             self.send_notification(json)
