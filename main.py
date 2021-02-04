@@ -59,6 +59,10 @@ from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
     QWidget,
+    QDialog,
+    QVBoxLayout,
+    QDialogButtonBox,
+    QFormLayout,
     QLabel,
     QTextEdit,
     QPushButton,
@@ -75,7 +79,7 @@ from PyQt5.QtCore import (
     pyqtSlot,
     pyqtSignal
 )
-
+from pyqtconfig import ConfigManager
 import irsdk
 import requests
 
@@ -162,22 +166,43 @@ class Widget(QWidget):
         super().__init__()
  
         self.settings = QSettings(os.path.join(os.path.dirname(os.path.abspath(__file__)), "settings.ini"), QSettings.IniFormat)
-        print(self.settings.fileName())
+
+        self.lametric_ip = None
+        self.lametric_api_key = None
+        self.irating = None
+        self.license = None
+
         try:
-            self.lametric_ip(self.settings.value('lametric_ip'))
-            self.lametric_api_key(self.settings.value('lametric_api_key'))
-            self.irating(self.settings.value('irating'))
-            self.license(self.settings.value('license'))
+            self.lametric_ip = self.settings.value('lametric_ip')
+            self.lametric_api_key = self.settings.value('lametric_api_key')
+            self.irating = self.settings.value('irating')
+            self.license = self.settings.value('license')
         except:
             pass
  
     def closeEvent(self, event):
-        self.settings.setValue('lametric_ip', self.lametric_ip())
-        self.settings.setValue('lametric_api_key', self.lametric_api_key())
-        self.settings.setValue('irating', self.irating())
-        self.settings.setValue('license', self.license())
+        self.settings.setValue('lametric_ip', self.lametric_ip)
+        self.settings.setValue('lametric_api_key', self.lametric_api_key)
+        self.settings.setValue('irating', self.irating)
+        self.settings.setValue('license', self.license)
         self.settings.sync()
 
+
+class Dialog(QDialog):
+    """Dialog."""
+    def __init__(self, parent= None):
+        """Initializer."""
+        super().__init__(parent)
+        self.setWindowTitle('Settings')
+        dlgLayout = QVBoxLayout()
+        formLayout = QFormLayout()
+        formLayout.addRow('LaMetric Time IP:', QLineEdit())
+        formLayout.addRow('API Key:', QLineEdit())
+        dlgLayout.addLayout(formLayout)
+        btns = QDialogButtonBox()
+        btns.setStandardButtons(
+            QDialogButtonBox.Cancel | QDialogButtonBox.Save)
+        dlgLayout.addWidget(btns)
 
 class MainWindow(QMainWindow):
 
@@ -319,6 +344,7 @@ class MainWindow(QMainWindow):
                             "icon": "i43085",
                             "text": data['IRating']
                         },
+                        {
                             "icon": "i43085",
                             "text": data["LicString"]
                         },

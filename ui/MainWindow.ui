@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>560</width>
+    <height>320</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>LaMetric iRacing Data Sender</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout" columnstretch="0,0">
+    <item row="1" column="0">
+     <widget class="QPushButton" name="pushButton">
+      <property name="text">
+       <string>Settings</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="0">
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <layout class="QFormLayout" name="formLayout_2">
+        <item row="0" column="0">
+         <layout class="QFormLayout" name="formLayout_3"/>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="driverNameLabel">
+          <property name="text">
+           <string>Driver Name</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="driverNameLineEdit"/>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="custIDLabel">
+          <property name="text">
+           <string>CustID</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="custIDLineEdit"/>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="iRatingLabel">
+          <property name="text">
+           <string>iRating</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QLineEdit" name="iRatingLineEdit"/>
+        </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="licenseLabel">
+          <property name="text">
+           <string>License</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QLineEdit" name="licenseLineEdit"/>
+        </item>
+        <item row="5" column="0">
+         <widget class="QLabel" name="lastLapLabel">
+          <property name="text">
+           <string>Last Lap</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QLineEdit" name="lastLapLineEdit"/>
+        </item>
+        <item row="6" column="0">
+         <widget class="QLabel" name="bestLapLabel">
+          <property name="text">
+           <string>Best Lap</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1">
+         <widget class="QLineEdit" name="bestLapLineEdit"/>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </item>
+    <item row="0" column="1">
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <item>
+       <widget class="QPlainTextEdit" name="flagsPlainTextEdit"/>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionSettings">
+   <property name="text">
+    <string>Settings</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
