@@ -426,13 +426,14 @@ class MainWindow(Window):
             self.lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
         except:
             self.lametric_api_key = None
-
+        
         if self.lametric_ip and self.lametric_api_key:
+            lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
             headers = {"Content-Type": "application/json; charset=utf-8"}
             basicAuthCredentials = ("dev", self.lametric_api_key)
             try:
                 response = requests.post(
-                    self.lametric_url,
+                    lametric_url,
                     headers=headers,
                     auth=basicAuthCredentials,
                     json=json,
@@ -469,6 +470,7 @@ class MainWindow(Window):
 
     def closeEvent(self, e):
         super().closeEvent(e)
+        self.ir.shutdown()
         e.accept()
         QCoreApplication.exit()
 
