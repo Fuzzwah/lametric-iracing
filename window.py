@@ -307,7 +307,6 @@ class SaveWindow(QWidget):
     def __widgets_savedata(self):
         s = self.settings()
         for widget in self.__widgets_data:
-            print(widget.objectName())
             s.setValue(widget.objectName(), widget.get_value_())
 
         for widget in self.__widgets_size:

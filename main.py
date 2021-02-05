@@ -64,7 +64,6 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QLabel,
-    QTextEdit,
     QPushButton,
     QLineEdit,
     QGridLayout,
@@ -271,7 +270,7 @@ class MainWindow(QMainWindow):
         self.setStatusBar(sb)
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
 
-        self.ir = irsdk.IRSDK()
+        self.ir = IRSDK()
 
         self.ir_connected = False
         self.car_in_world = False
