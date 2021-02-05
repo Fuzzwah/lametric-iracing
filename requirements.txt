@@ -1,4 +1,2 @@
 pyqt5
-pyqtconfig
-pyirsdk
 requests
