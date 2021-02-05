@@ -79,7 +79,7 @@ from PyQt5.QtCore import (
     pyqtSignal
 )
 from pyqtconfig import ConfigManager
-import irsdk
+from pyirsdk import IRSDK
 import requests
 
 

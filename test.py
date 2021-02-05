@@ -17,7 +17,10 @@ from PyQt5.QtCore import (
     pyqtSignal
 )
 from window import Window, Dialog
-from pyirsdk import IRSDK
+from pyirsdk import (
+    IRSDK,
+    Flags
+)
 
 
 class State:
@@ -193,15 +196,31 @@ class MainWindow(Window):
         try:
             data["IRating"] = f"{self.driver['IRating']:,}"
         except KeyError:
-            pass
+            data["IRating"] = ""
         try:
             data["LicString"] = self.driver['LicString']
         except KeyError:
-            pass
+            data["LicString"] = ""
         try:
             data["LapBestLapTime"] = self.ir['LapBestLapTime']
         except KeyError:
-            pass
+            data["LapBestLapTime"] = ""
+        try:
+            data["UserID"] = f"{self.driver['UserID']:,}"
+        except KeyError:
+            data["UserID"] = ""
+        try:
+            data["UserName"] = self.driver['UserName']
+        except KeyError:
+            data["UserName"] = ""
+        try:
+            data["LastLapTime"] = self.ir['LastLapTime']
+        except KeyError:
+            data["LastLapTime"] = ""
+        try:
+            data['SessionFlags'] = self.ir['SessionFlags']
+        except KeyError:
+            data['SessionFlags'] = 0
 
         return data
 
@@ -222,8 +241,10 @@ class MainWindow(Window):
             json["model"]["frames"].append({"icon": "i43085", "text": data['IRating']})
             json["model"]["frames"].append({"icon": "i43085", "text": data["LicString"]})
         
-        if self.custIDLineEdit.text is not f"{data['custid']}":
-            self.custIDLineEdit.setText(f"{data['custid']}")
+        if self.custIDLineEdit.text is not f"{data['UserID']}":
+            self.custIDLineEdit.setText(f"{data['UserID']}")
+        if self.driverNameLineEdit.text is not f"{data['UserName']}":
+            self.driverNameLineEdit.setText(f"{data['UserName']}")            
         if self.licenseLineEdit.text is not f"{data['LicString']}":
             self.licenseLineEdit.setText(f"{data['LicString']}")
         if self.bestLapLineEdit.text is not f"{data['LapBestLapTime']}":
@@ -231,139 +252,139 @@ class MainWindow(Window):
         if self.lastLapLineEdit.text is not f"{data['LastLapTime']}":
             self.lastLapLineEdit.setText(f"{data['LastLapTime']}")
 
-        if not self.last_flags == self.ir['SessionFlags']:
+        if not self.last_flags == data['SessionFlags']:
             update_required = True
             print("Flag Change")
             print(f"Last: {self.last_flags}")
-            print(f"Current: {self.ir['SessionFlags']}")
+            print(f"Current: {data['SessionFlags']}")
 
-            if self.ir['SessionFlags'] & irsdk.Flags.start_hidden:
+            if data['SessionFlags'] & Flags.start_hidden:
                 print("Continuous green")
                 self.start_hidden.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Green"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.checkered:
+            if data['SessionFlags'] & Flags.checkered:
                 print("Checkered Flag")
                 self.checkered.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Checkered"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.white:
+            if data['SessionFlags'] & Flags.white:
                 print("White Flag")
                 self.white.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "White"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.green:
+            if data['SessionFlags'] & Flags.green:
                 print("Green flag")
                 self.green.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Green"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.yellow:
+            if data['SessionFlags'] & Flags.yellow:
                 print("Yellow flag")
                 self.yellow.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Yellow"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.red:
+            if data['SessionFlags'] & Flags.red:
                 print("Red flag")
                 self.red.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Red"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.blue:
+            if data['SessionFlags'] & Flags.blue:
                 print("Blue flag")
                 self.blue.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Blue"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.debris:
+            if data['SessionFlags'] & Flags.debris:
                 print("Debris flag")
                 self.debris.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Debris"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.crossed:
+            if data['SessionFlags'] & Flags.crossed:
                 print("Crossed flags")
                 self.crossed.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Crossed"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.yellow_waving:
+            if data['SessionFlags'] & Flags.yellow_waving:
                 print("Yellow waving flag")
                 self.yellow_waving.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Yellow waving"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.one_lap_to_green:
+            if data['SessionFlags'] & Flags.one_lap_to_green:
                 print("One lap to green")
                 self.one_lap_to_green.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "1 to Green"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.green_held:
+            if data['SessionFlags'] & Flags.green_held:
                 print("Green flag held")
                 self.green_held.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Green held"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.ten_to_go:
+            if data['SessionFlags'] & Flags.ten_to_go:
                 print("Ten to go")
                 self.ten_to_go.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "10 to go"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.five_to_go:
+            if data['SessionFlags'] & Flags.five_to_go:
                 print("Five to go")
                 self.five_to_go.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "5 to go"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.random_waving:
+            if data['SessionFlags'] & Flags.random_waving:
                 print("Random waving flag")
                 self.random_waving.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Random"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.caution:
+            if data['SessionFlags'] & Flags.caution:
                 print("Caution Flag")
                 self.cauting.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Caution"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.caution_waving:
+            if data['SessionFlags'] & Flags.caution_waving:
                 print("Caution waving Flag")
                 self.caution_waving.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Caution waving"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.black:
+            if data['SessionFlags'] & Flags.black:
                 print("Black Flag")
                 self.black.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Black"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.disqualify:
+            if data['SessionFlags'] & Flags.disqualify:
                 print("DQ Flag")
                 self.disqualify.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "DQ"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.furled:
+            if data['SessionFlags'] & Flags.furled:
                 print("Furled black Flag")
                 self.furled.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Furled black"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.repair:
+            if data['SessionFlags'] & Flags.repair:
                 print("Meatball Flag")
                 self.repair.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": "i43085", "text": "Meatball"})
           
-            self.last_flags = self.ir['SessionFlags']
+            self.last_flags = data['SessionFlags']
 
         if update_required:
             self.send_notification(json)
