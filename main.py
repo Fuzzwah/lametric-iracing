@@ -152,6 +152,8 @@ class MainWindow(Window):
         elif not self.state.ir_connected and self.ir.startup(silent=True) and self.ir.is_initialized and self.ir.is_connected:
             self.state.ir_connected = True
             return True
+        elif self.ir.is_initialized and self.ir.is_connected:
+            return True
              
     def irsdk_connection_controller(self, now_connected):
         if now_connected and not self.ir_connected:
@@ -181,7 +183,7 @@ class MainWindow(Window):
         except KeyError:
             data["LapBestLapTime"] = ""
         try:
-            data["UserID"] = f"{self.driver['UserID']:,}"
+            data["UserID"] = f"{self.driver['UserID']}"
         except KeyError:
             data["UserID"] = ""
         try:
@@ -189,9 +191,9 @@ class MainWindow(Window):
         except KeyError:
             data["UserName"] = ""
         try:
-            data["LastLapTime"] = self.ir['LastLapTime']
+            data["LapLastLapTime"] = self.ir['LapLastLapTime']
         except KeyError:
-            data["LastLapTime"] = ""
+            data["LapLastLapTime"] = ""
         try:
             data['SessionFlags'] = self.ir['SessionFlags']
         except KeyError:
@@ -224,14 +226,11 @@ class MainWindow(Window):
             self.licenseLineEdit.setText(f"{data['LicString']}")
         if self.bestLapLineEdit.text is not f"{data['LapBestLapTime']}":
             self.bestLapLineEdit.setText(f"{data['LapBestLapTime']}")
-        if self.lastLapLineEdit.text is not f"{data['LastLapTime']}":
-            self.lastLapLineEdit.setText(f"{data['LastLapTime']}")
+        if self.lastLapLineEdit.text is not f"{data['LapLastLapTime']}":
+            self.lastLapLineEdit.setText(f"{data['LapLastLapTime']}")
 
         if not self.last_flags == data['SessionFlags']:
             update_required = True
-            print("Flag Change")
-            print(f"Last: {self.last_flags}")
-            print(f"Current: {data['SessionFlags']}")
 
             if data['SessionFlags'] & Flags.start_hidden:
                 print("Continuous green")
@@ -381,6 +380,7 @@ class MainWindow(Window):
             if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
                 self.driver = dvr
                 break
+
         pprint(self.driver)
         self.timerMainCycle.start()
 
