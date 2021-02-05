@@ -245,7 +245,7 @@ class SaveWindow(QWidget):
 
     def settings(self) -> QSettings:
         s = QSettings()
-        s.beginGroup("windows/" + self.objectName())
+        s.beginGroup("lametric-iracing/" + self.objectName())
         return s
 
     def settings_save(self):
@@ -343,14 +343,14 @@ class Window(QMainWindow, SaveWindow):
 
     def closeEvent(self, e):
         # Would work without this override.
-        # But does not with Dialog.
+        # But does not with QDialog.
         # So better explicit call on both classes.
 
         QMainWindow.closeEvent(self, e)
         SaveWindow.closeEvent(self, e)
 
 
-class Dialog(QDialog, SaveWindow):
+class Settings(QDialog, SaveWindow):
     def __init__(self, uifile: str, relativity: PathRelativity = PathRelativity.MAINPY):
         realfile = _abspath(uifile, relativity)
         if not realfile.is_file():
@@ -360,6 +360,10 @@ class Dialog(QDialog, SaveWindow):
         SaveWindow.__init__(self)
 
         loadUi(str(realfile), self)
+
+        self.s = QSettings()
+        print(self.s.allKeys())
+        
 
     def show(self, modal: bool = False):
         SaveWindow.show(self)

@@ -13,10 +13,11 @@ from PyQt5.QtCore import (
     QRunnable,
     QThreadPool,
     QTimer,
+    QSettings,
     pyqtSlot,
     pyqtSignal
 )
-from window import Window, Dialog
+from window import Window, Settings
 from pyirsdk import (
     IRSDK,
     Flags
@@ -101,7 +102,7 @@ class MainWindow(Window):
     def __init__(self):
         super().__init__("ui/MainWindow.ui")
 
-        self.dialog: Optional[MyDialog] = None
+        self.dialog: Optional[SettingsDialog] = None
 
         mnu = self.actionSettings
         mnu.setShortcut("Ctrl+O")
@@ -407,7 +408,6 @@ class MainWindow(Window):
                 self.driver = dvr
                 break
         pprint(self.driver)
-        pprint(self.ir['LapBestLapTime'])
         self.timerMainCycle.start()
 
     def onDisconnection(self):
@@ -417,6 +417,16 @@ class MainWindow(Window):
         self.timerMainCycle.stop()
 
     def send_notification(self, json):
+        s = QSettings()
+        try:
+            self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
+        except:
+            self.lametric_ip = None
+        try:
+            self.lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
+        except:
+            self.lametric_api_key = None
+
         if self.lametric_ip and self.lametric_api_key:
             headers = {"Content-Type": "application/json; charset=utf-8"}
             basicAuthCredentials = ("dev", self.lametric_api_key)
@@ -453,7 +463,7 @@ class MainWindow(Window):
 
     def open_dialog(self, modal: bool = False):
         if self.dialog is None:
-            self.dialog = MyDialog()
+            self.dialog = SettingsDialog()
 
         self.dialog.show(modal)
 
@@ -463,9 +473,9 @@ class MainWindow(Window):
         QCoreApplication.exit()
 
 
-class MyDialog(Dialog):
+class SettingsDialog(Settings):
     def __init__(self):
-        super(MyDialog, self).__init__("ui/SettingsDialog.ui")
+        super(SettingsDialog, self).__init__("ui/SettingsDialog.ui")
 
         self.register_widget(self.laMetricTimeIPLineEdit)
         self.register_widget(self.aPIKeyLineEdit)
