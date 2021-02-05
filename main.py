@@ -237,49 +237,49 @@ class MainWindow(Window):
                 print("Continuous green")
                 self.start_hidden.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "Green"})
+                json['model']['frames'].append({"icon": "i43453", "text": "Green"})
 
             if data['SessionFlags'] & Flags.checkered:
                 print("Checkered Flag")
                 self.checkered.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "Checkered"})
+                json['model']['frames'].append({"icon": "i43451", "text": "Checkered"})
 
             if data['SessionFlags'] & Flags.white:
                 print("White Flag")
                 self.white.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "White"})
+                json['model']['frames'].append({"icon": "i43448", "text": "White"})
 
             if data['SessionFlags'] & Flags.green:
                 print("Green flag")
                 self.green.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "Green"})
+                json['model']['frames'].append({"icon": "i43453", "text": "Green"})
 
             if data['SessionFlags'] & Flags.yellow:
                 print("Yellow flag")
                 self.yellow.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "Yellow"})
+                json['model']['frames'].append({"icon": "i43439", "text": "Yellow"})
 
             if data['SessionFlags'] & Flags.red:
                 print("Red flag")
                 self.red.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "Red"})
+                json['model']['frames'].append({"icon": "i43446", "text": "Red"})
 
             if data['SessionFlags'] & Flags.blue:
                 print("Blue flag")
                 self.blue.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "Blue"})
+                json['model']['frames'].append({"icon": "i43449", "text": "Blue"})
 
             if data['SessionFlags'] & Flags.debris:
                 print("Debris flag")
                 self.debris.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "Debris"})
+                json['model']['frames'].append({"icon": "i43456", "text": "Debris"})
 
             if data['SessionFlags'] & Flags.crossed:
                 print("Crossed flags")
@@ -303,7 +303,7 @@ class MainWindow(Window):
                 print("Green flag held")
                 self.green_held.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "Green held"})
+                json['model']['frames'].append({"icon": "i43457", "text": "Green held"})
 
             if data['SessionFlags'] & Flags.ten_to_go:
                 print("Ten to go")
@@ -321,43 +321,43 @@ class MainWindow(Window):
                 print("Random waving flag")
                 self.random_waving.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "Random"})
+                json['model']['frames'].append({"icon": "i43458", "text": "Random"})
 
             if data['SessionFlags'] & Flags.caution:
                 print("Caution Flag")
                 self.cauting.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "Caution"})
+                json['model']['frames'].append({"icon": "i43447", "text": "Caution"})
 
             if data['SessionFlags'] & Flags.caution_waving:
                 print("Caution waving Flag")
                 self.caution_waving.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "Caution waving"})
+                json['model']['frames'].append({"icon": "i43447", "text": "Caution waving"})
 
             if data['SessionFlags'] & Flags.black:
                 print("Black Flag")
                 self.black.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "Black"})
+                json['model']['frames'].append({"icon": "i43450", "text": "Black"})
 
             if data['SessionFlags'] & Flags.disqualify:
                 print("DQ Flag")
                 self.disqualify.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "DQ"})
+                json['model']['frames'].append({"icon": "i43454", "text": "DQ"})
 
             if data['SessionFlags'] & Flags.furled:
                 print("Furled black Flag")
                 self.furled.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "Furled black"})
+                json['model']['frames'].append({"icon": "i43455", "text": "Furled black"})
 
             if data['SessionFlags'] & Flags.repair:
                 print("Meatball Flag")
                 self.repair.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": "i43085", "text": "Meatball"})
+                json['model']['frames'].append({"icon": "i43452", "text": "Meatball"})
           
             self.last_flags = data['SessionFlags']
 
