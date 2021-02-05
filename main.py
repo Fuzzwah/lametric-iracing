@@ -1,75 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-#   This program is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
-#
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License along
-#   with this program; if not, write to the Free Software Foundation, Inc.,
-#   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
-"""
-SYNOPSIS
-
-    python main.py [-h,--help] [-l,--log] [--debug]
-
-DESCRIPTION
-
-    TODO This describes how to use this script. This docstring
-    will be printed by the script if there is an error or
-    if the user requests help (-h or --help).
-
-EXAMPLES
-
-    TODO: Show some examples of how to use this script.
-
-AUTHOR
-
-    Robert Crouch (rob.crouch@gmail.com)
-
-VERSION
-
-    $Id$
-"""
-
-__program__ = "lametic-iracing"
-__author__ = "Robert Crouch (rob.crouch@gmail.com)"
-__copyright__ = "Copyright (C) 2021- Robert Crouch"
-__license__ = "AGPL 3.0"
-__version__ = "v0.210117"
-
-import os
 import sys
-import time
 from pprint import pprint
-import logging, logging.handlers
+import requests
 import traceback
-
-from PyQt5.QtGui import (
-    QFont
-)
-from PyQt5.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QWidget,
-    QDialog,
-    QVBoxLayout,
-    QDialogButtonBox,
-    QFormLayout,
-    QLabel,
-    QPushButton,
-    QLineEdit,
-    QGridLayout,
-    QStatusBar
-)
+from typing import Optional
+from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import (
+    QCoreApplication,
     QObject,
     QRunnable,
     QThreadPool,
@@ -78,17 +17,16 @@ from PyQt5.QtCore import (
     pyqtSlot,
     pyqtSignal
 )
-from pyqtconfig import ConfigManager
-from pyirsdk import IRSDK
-import requests
+from window import Window, Settings
+from pyirsdk import (
+    IRSDK,
+    Flags
+)
 
 
-def set_font(size=14, bold=False):
-    font = QFont()
-    font.setBold(bold)
-    font.setPixelSize(size)
-    return font
-
+class State:
+    ir_connected = False
+    last_car_setup_tick = -1
 
 class WorkerSignals(QObject):
     '''
@@ -158,122 +96,37 @@ class Worker(QRunnable):
             self.signals.result.emit(result)  # Return the result of the processing
         finally:
             self.signals.finished.emit()  # Done
-        
 
-class Widget(QWidget):
+
+class MainWindow(Window):
     def __init__(self):
-        super().__init__()
- 
-        self.settings = QSettings(os.path.join(os.path.dirname(os.path.abspath(__file__)), "settings.ini"), QSettings.IniFormat)
+        super().__init__("ui/MainWindow.ui")
 
-        self.lametric_ip = None
-        self.lametric_api_key = None
-        self.irating = None
-        self.license = None
+        self.dialog: Optional[SettingsDialog] = None
 
-        try:
-            self.lametric_ip = self.settings.value('lametric_ip')
-            self.lametric_api_key = self.settings.value('lametric_api_key')
-            self.irating = self.settings.value('irating')
-            self.license = self.settings.value('license')
-        except:
-            pass
- 
-    def closeEvent(self, event):
-        self.settings.setValue('lametric_ip', self.lametric_ip)
-        self.settings.setValue('lametric_api_key', self.lametric_api_key)
-        self.settings.setValue('irating', self.irating)
-        self.settings.setValue('license', self.license)
-        self.settings.sync()
+        mnu = self.actionSettings
+        mnu.setShortcut("Ctrl+O")
+        mnu.setStatusTip("Show settings")
+        mnu.triggered.connect(self.show_settings)
 
-
-class Dialog(QDialog):
-    """Dialog."""
-    def __init__(self, parent= None):
-        """Initializer."""
-        super().__init__(parent)
-        self.setWindowTitle('Settings')
-        dlgLayout = QVBoxLayout()
-        formLayout = QFormLayout()
-        formLayout.addRow('LaMetric Time IP:', QLineEdit())
-        formLayout.addRow('API Key:', QLineEdit())
-        dlgLayout.addLayout(formLayout)
-        btns = QDialogButtonBox()
-        btns.setStandardButtons(
-            QDialogButtonBox.Cancel | QDialogButtonBox.Save)
-        dlgLayout.addWidget(btns)
-
-class MainWindow(QMainWindow):
-
-    def __init__(self, *args, **kwargs):
-        super(MainWindow, self).__init__(*args, **kwargs)
-
-        self.lametric_ip = '10.1.1.33'
-        self.lametric_api_key = 'e8dfee57a2832810c874b3fd9dc0985bb78d3d0e737823b64ebb80c1f5197ad2'
-        if self.lametric_ip:
-            self.lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
-
-        self.driver = None
-        self.last_flag = None
-        self.last_irating = None
-
-        self.setWindowTitle("LaMetric iRacing Data Sender")
-
-        layout = QGridLayout()
-        layout.setColumnMinimumWidth(1, 70)
-        layout.setSpacing(10)
-
-        iratingLabel = QLabel('iRating')
-        iratingLabel.setFont(set_font(bold=True))
-        layout.addWidget(iratingLabel, 1, 0, 1, 1)
-
-        self.iratingField = QLineEdit()
-        self.iratingField.setReadOnly(True)
-        self.iratingField.setText("")
-        self.iratingField.setFont(set_font())
-        layout.addWidget(self.iratingField, 1, 1, 1, 3)
-
-        licenseLabel = QLabel('License')
-        licenseLabel.setFont(set_font(bold=True))
-        layout.addWidget(licenseLabel, 2, 0, 1, 1)
-
-        self.licenseField = QLineEdit()
-        self.licenseField.setReadOnly(True)
-        self.licenseField.setText("")
-        self.licenseField.setFont(set_font())
-        layout.addWidget(self.licenseField, 2, 1, 1, 3)
-
-        bestLapLabel = QLabel('Best Lap')
-        bestLapLabel.setFont(set_font(bold=True))
-        layout.addWidget(bestLapLabel, 3, 0, 1, 1)
-
-        self.bestLapField = QLineEdit()
-        self.bestLapField.setReadOnly(True)
-        self.bestLapField.setText("")
-        self.bestLapField.setFont(set_font())
-        layout.addWidget(self.bestLapField, 3, 1, 1, 3)
-
-        self.debugBtn = QPushButton('Debug')
-        self.debugBtn.clicked.connect(self.debug)
-        layout.addWidget(self.debugBtn, 4, 1, 1, 1)
-
-        w = Widget()
-        w.setLayout(layout)
-    
-        self.setCentralWidget(w)
-    
-        self.show()
-
-        sb = QStatusBar()
+        sb = self.statusBar()
         sb.setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
         sb.setFixedHeight(20)
         self.setStatusBar(sb)
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
 
+        self.register_widget(self.driverNameLineEdit)
+        self.register_widget(self.custIDLineEdit)
+        self.register_widget(self.iRatingLineEdit)
+        self.register_widget(self.licenseLineEdit)
+
         self.ir = IRSDK()
+        self.state = State()
 
         self.ir_connected = False
         self.car_in_world = False
+        self.last_irating = None
+        self.last_flags = None
 
         self.threadpool = QThreadPool()
 
@@ -285,151 +138,231 @@ class MainWindow(QMainWindow):
         self.timerMainCycle = QTimer()
         self.timerMainCycle.setInterval(1)
         self.timerMainCycle.timeout.connect(self.main_cycle)
-        
 
-    def connection_check(self):
-        if self.ir.is_connected:
+    # here we check if we are connected to iracing
+    # so we can retrieve some data
+    def irsdk_connection_check(self):
+        if self.state.ir_connected and not (self.ir.is_initialized and self.ir.is_connected):
+            self.state.ir_connected = False
+            # don't forget to reset your State variables
+            self.state.last_car_setup_tick = -1
+            # we are shutting down ir library (clearing all internal variables)
+            self.ir.shutdown()
+            return False
+        elif not self.state.ir_connected and self.ir.startup(silent=True) and self.ir.is_initialized and self.ir.is_connected:
+            self.state.ir_connected = True
             return True
-        else:
-            self.ir.startup(silent=True)
-            try:
-                if self.ir.is_connected:
-                    return True
-                else:            
-                    return False
-            except AttributeError:
-                return False
              
-    def connection_controller(self, now_connected):
+    def irsdk_connection_controller(self, now_connected):
         if now_connected and not self.ir_connected:
             self.onConnection()
         elif not now_connected and self.ir_connected:
             self.onDisconnection()
  
     def irsdkConnectionMonitor(self):
-        monitor_worker = Worker(self.connection_check)
-        monitor_worker.signals.result.connect(self.connection_controller)
+        monitor_worker = Worker(self.irsdk_connection_check)
+        monitor_worker.signals.result.connect(self.irsdk_connection_controller)
         
         self.threadpool.start(monitor_worker)
 
     def data_collection_cycle(self):
+        self.ir.freeze_var_buffer_latest()
         data = {}
         try:
             data["IRating"] = f"{self.driver['IRating']:,}"
         except KeyError:
-            pass
+            data["IRating"] = ""
         try:
             data["LicString"] = self.driver['LicString']
         except KeyError:
-            pass
+            data["LicString"] = ""
         try:
             data["LapBestLapTime"] = self.ir['LapBestLapTime']
         except KeyError:
-            pass
+            data["LapBestLapTime"] = ""
+        try:
+            data["UserID"] = f"{self.driver['UserID']:,}"
+        except KeyError:
+            data["UserID"] = ""
+        try:
+            data["UserName"] = self.driver['UserName']
+        except KeyError:
+            data["UserName"] = ""
+        try:
+            data["LastLapTime"] = self.ir['LastLapTime']
+        except KeyError:
+            data["LastLapTime"] = ""
+        try:
+            data['SessionFlags'] = self.ir['SessionFlags']
+        except KeyError:
+            data['SessionFlags'] = 0
 
         return data
 
     def process_data(self, data):
-        if self.last_irating != f"{data['IRating']}":
-            self.last_irating = f"{data['IRating']}"
-            self.iratingField.setText(f"{data['IRating']}")
-            json = {
-                "priority": "info",
-                "icon_type":"none",
-                "model": {
-                    "cycles": 0,
-                    "frames": [
-                        {
-                            "icon": "i43085",
-                            "text": data['IRating']
-                        },
-                        {
-                            "icon": "i43085",
-                            "text": data["LicString"]
-                        },
-                    ]
-                }
+        update_required = False
+        json = {
+            "priority": "info",
+            "icon_type":"none",
+            "model": {
+                "cycles": 0,
+                "frames": []
             }
-            self.send_notification(json)
+        }        
+        if self.last_irating != f"{data['IRating']}":
+            update_required = True
+            self.last_irating = f"{data['IRating']}"
+            self.iRatingLineEdit.setText(f"{data['IRating']}")
+            json["model"]["frames"].append({"icon": "i43085", "text": data['IRating']})
+            json["model"]["frames"].append({"icon": "i43085", "text": data["LicString"]})
+        
+        if self.custIDLineEdit.text is not f"{data['UserID']}":
+            self.custIDLineEdit.setText(f"{data['UserID']}")
+        if self.driverNameLineEdit.text is not f"{data['UserName']}":
+            self.driverNameLineEdit.setText(f"{data['UserName']}")            
+        if self.licenseLineEdit.text is not f"{data['LicString']}":
+            self.licenseLineEdit.setText(f"{data['LicString']}")
+        if self.bestLapLineEdit.text is not f"{data['LapBestLapTime']}":
+            self.bestLapLineEdit.setText(f"{data['LapBestLapTime']}")
+        if self.lastLapLineEdit.text is not f"{data['LastLapTime']}":
+            self.lastLapLineEdit.setText(f"{data['LastLapTime']}")
 
-        if self.licenseField.text is not f"{data['LicString']}":
-            self.licenseField.setText(f"{data['LicString']}")
-        if self.bestLapField.text is not f"{data['LapBestLapTime']}":
-            self.bestLapField.setText(f"{data['LapBestLapTime']}")
-
-        if not self.last_flag == self.ir['SessionFlags']:
+        if not self.last_flags == data['SessionFlags']:
+            update_required = True
             print("Flag Change")
-            print(f"Last: {self.last_flag}")
-            print(f"Current: {self.ir['SessionFlags']}")
+            print(f"Last: {self.last_flags}")
+            print(f"Current: {data['SessionFlags']}")
 
-            if self.ir['SessionFlags'] & irsdk.Flags.start_hidden:
+            if data['SessionFlags'] & Flags.start_hidden:
                 print("Continuous green")
+                self.start_hidden.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Green"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.checkered:
+            if data['SessionFlags'] & Flags.checkered:
                 print("Checkered Flag")
-            
-            if self.ir['SessionFlags'] & irsdk.Flags.white:
+                self.checkered.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Checkered"})
+
+            if data['SessionFlags'] & Flags.white:
                 print("White Flag")
+                self.white.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "White"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.green:
+            if data['SessionFlags'] & Flags.green:
                 print("Green flag")
+                self.green.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Green"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.yellow:
+            if data['SessionFlags'] & Flags.yellow:
                 print("Yellow flag")
-                    
-            if self.ir['SessionFlags'] & irsdk.Flags.red:
+                self.yellow.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Yellow"})
+
+            if data['SessionFlags'] & Flags.red:
                 print("Red flag")
+                self.red.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Red"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.blue:
+            if data['SessionFlags'] & Flags.blue:
                 print("Blue flag")
+                self.blue.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Blue"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.debris:
+            if data['SessionFlags'] & Flags.debris:
                 print("Debris flag")
+                self.debris.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Debris"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.crossed:
+            if data['SessionFlags'] & Flags.crossed:
                 print("Crossed flags")
+                self.crossed.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Crossed"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.yellow_waving:
+            if data['SessionFlags'] & Flags.yellow_waving:
                 print("Yellow waving flag")
+                self.yellow_waving.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Yellow waving"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.one_lap_to_green:
+            if data['SessionFlags'] & Flags.one_lap_to_green:
                 print("One lap to green")
+                self.one_lap_to_green.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "1 to Green"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.green_held:
+            if data['SessionFlags'] & Flags.green_held:
                 print("Green flag held")
+                self.green_held.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Green held"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.ten_to_go:
+            if data['SessionFlags'] & Flags.ten_to_go:
                 print("Ten to go")
+                self.ten_to_go.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "10 to go"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.five_to_go:
+            if data['SessionFlags'] & Flags.five_to_go:
                 print("Five to go")
+                self.five_to_go.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "5 to go"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.random_waving:
+            if data['SessionFlags'] & Flags.random_waving:
                 print("Random waving flag")
+                self.random_waving.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Random"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.caution:
+            if data['SessionFlags'] & Flags.caution:
                 print("Caution Flag")
+                self.cauting.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Caution"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.caution_waving:
+            if data['SessionFlags'] & Flags.caution_waving:
                 print("Caution waving Flag")
+                self.caution_waving.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Caution waving"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.black:
+            if data['SessionFlags'] & Flags.black:
                 print("Black Flag")
+                self.black.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Black"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.disqualify:
+            if data['SessionFlags'] & Flags.disqualify:
                 print("DQ Flag")
+                self.disqualify.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "DQ"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.furled:
+            if data['SessionFlags'] & Flags.furled:
                 print("Furled black Flag")
+                self.furled.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Furled black"})
 
-            if self.ir['SessionFlags'] & irsdk.Flags.repair:
+            if data['SessionFlags'] & Flags.repair:
                 print("Meatball Flag")
-                json['model']['frames'].append({
-                            "icon": "i43085",
-                            "text": "Meatball"
-                        })                
+                self.repair.setChecked(True)
+                update_required = True
+                json['model']['frames'].append({"icon": "i43085", "text": "Meatball"})
           
-            self.last_flag = self.ir['SessionFlags']
+            self.last_flags = data['SessionFlags']
+
+        if update_required:
+            self.send_notification(json)
 
         
 
@@ -449,7 +382,6 @@ class MainWindow(QMainWindow):
                 self.driver = dvr
                 break
         pprint(self.driver)
-        pprint(self.ir['LapBestLapTime'])
         self.timerMainCycle.start()
 
     def onDisconnection(self):
@@ -459,12 +391,23 @@ class MainWindow(QMainWindow):
         self.timerMainCycle.stop()
 
     def send_notification(self, json):
+        s = QSettings()
+        try:
+            self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
+        except:
+            self.lametric_ip = None
+        try:
+            self.lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
+        except:
+            self.lametric_api_key = None
+        
         if self.lametric_ip and self.lametric_api_key:
+            lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
             headers = {"Content-Type": "application/json; charset=utf-8"}
             basicAuthCredentials = ("dev", self.lametric_api_key)
             try:
                 response = requests.post(
-                    self.lametric_url,
+                    lametric_url,
                     headers=headers,
                     auth=basicAuthCredentials,
                     json=json,
@@ -482,42 +425,50 @@ class MainWindow(QMainWindow):
             except requests.exceptions.Timeout as errt:
                 print("Timeout: ", errt)
 
-    def debug(self):
-        pprint(self.driver)
-        pprint(self.ir['SessionFlags'])
+    def show_settings(self):
+        self.open_dialog()
 
-def setup_logging():
-    """ Everything required when the application is first initialized
-    """
+    @pyqtSlot()
+    def on_pushButton_clicked(self):
+        self.open_dialog()
 
-    basepath = os.path.abspath(".")
+    @pyqtSlot()
+    def on_pushButtonModal_clicked(self):
+        self.open_dialog(True)
 
-    # set up all the logging stuff
-    LOG_FILENAME = os.path.join(basepath, "lametric.log")
+    def open_dialog(self, modal: bool = False):
+        if self.dialog is None:
+            self.dialog = SettingsDialog()
 
-    LOG_LEVEL = logging.WARNING  # Could be e.g. "DEBUG" or "WARNING"
+        self.dialog.show(modal)
 
-    # Configure logging to log to a file, making a new file at midnight and keeping the last 3 day's data
-    # Give the logger a unique name (good practice)
-    log = logging.getLogger(__name__)
-    # Set the log level to LOG_LEVEL
-    log.setLevel(LOG_LEVEL)
-    # Make a handler that writes to a file, making a new file at midnight and keeping 3 backups
-    handler = logging.handlers.TimedRotatingFileHandler(LOG_FILENAME, when="midnight", backupCount=3)
-    # Format each log message like this
-    formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s')
-    # Attach the formatter to the handler
-    handler.setFormatter(formatter)
-    # Attach the handler to the logger
-    log.addHandler(handler)
+    def closeEvent(self, e):
+        super().closeEvent(e)
+        self.ir.shutdown()
+        e.accept()
+        QCoreApplication.exit()
 
 
-if __name__ == '__main__':
-    # setup logging
-    setup_logging()
+class SettingsDialog(Settings):
+    def __init__(self):
+        super(SettingsDialog, self).__init__("ui/SettingsDialog.ui")
 
-    # connect to the logger we set up
-    log = logging.getLogger(__name__)
-    app = QApplication([])
-    window = MainWindow()
-    sys.exit(app.exec_())
+        self.register_widget(self.laMetricTimeIPLineEdit)
+        self.register_widget(self.aPIKeyLineEdit)
+
+    def closeEvent(self, e):
+        super().closeEvent(e)
+        e.accept()
+
+
+if __name__ == "__main__":
+    QCoreApplication.setOrganizationName("Fuzzwah")
+    QCoreApplication.setApplicationName("LaMetric iRacing Data Sender")
+    QCoreApplication.setOrganizationDomain("lametic-iracing.fuzzwah.com")
+
+    qapp = QApplication(sys.argv)
+
+    root = MainWindow()
+    root.show()
+    ret = qapp.exec_()
+    sys.exit(ret)
