@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Settings</class>
- <widget class="QDialog" name="Settings">
+ <class>Message</class>
+ <widget class="QDialog" name="Message">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Settings</string>
+   <string>Message</string>
   </property>
   <widget class="QWidget" name="gridLayoutWidget">
    <property name="geometry">
@@ -26,7 +26,7 @@
     <item row="0" column="0">
      <widget class="QDialogButtonBox" name="buttonBox">
       <property name="standardButtons">
-       <set>QDialogButtonBox::Save</set>
+       <set>QDialogButtonBox::Ok</set>
       </property>
       <property name="centerButtons">
        <bool>true</bool>
@@ -40,7 +40,7 @@
     <rect>
      <x>-1</x>
      <y>-1</y>
-     <width>1096</width>
+     <width>521</width>
      <height>111</height>
     </rect>
    </property>
@@ -58,38 +58,14 @@
      <number>10</number>
     </property>
     <item>
-     <layout class="QFormLayout" name="formLayout">
-      <property name="formAlignment">
-       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+     <widget class="QLabel" name="label">
+      <property name="text">
+       <string/>
       </property>
-      <item row="0" column="0">
-       <widget class="QLabel" name="iPAddressLabel">
-        <property name="text">
-         <string>IP Address</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLineEdit" name="laMetricTimeIPLineEdit"/>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="aPIKeyLabel">
-        <property name="text">
-         <string>API Key</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="aPIKeyLineEdit">
-        <property name="minimumSize">
-         <size>
-          <width>400</width>
-          <height>0</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-     </layout>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
     </item>
    </layout>
   </widget>

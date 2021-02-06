@@ -18,7 +18,7 @@ from PyQt5.QtCore import (
     pyqtSlot,
     pyqtSignal
 )
-from window import Window, Settings
+from window import Window, Dialog
 from pyirsdk import (
     IRSDK,
     Flags
@@ -31,25 +31,25 @@ class Icons(object):
     """
 
     ir: str = 'i43085'
-    start_hidden: str = 'i43453'
-    checkered: str = 'i43451'
-    white: str = 'i43448'
-    green: str = 'i43453'
-    yellow: str = 'i43439'
-    red: str = 'i43446'
-    blue: str = 'i43449'
-    debris: str = 'i43456'
-    green_held: str = 'i43457'
-    random_waving: str = 'i43458'
-    caution: str = 'i43447'
-    caution_waving: str = 'i43447'
-    black: str = 'i43450'
-    disqualify: str = 'i43454'
-    furled: str = 'i43455'
-    repair: str = 'i43452'
+    start_hidden: str = 'a43445'
+    checkered: str = 'a43490'
+    white: str = 'a43444'
+    green: str = 'a43445'
+    yellow: str = 'a43439'
+    yellow_waving: str = 'a43439'
+    red: str = 'a43491'
+    blue: str = 'a43495'
+    debris: str = 'a43497'
+    green_held: str = 'i43445'
+    random_waving: str = 'a43458'
+    caution: str = 'i43439'
+    caution_waving: str = 'a43439'
+    black: str = 'a43499'
+    disqualify: str = 'a43492'
+    furled: str = 'a43496'
+    repair: str = 'a43500'
     # we don't have icons for these yet
     crossed: str = ir
-    yellow_waving: str = ir
     one_lap_to_green: str = ir
     ten_to_go: str = ir
     five_to_go: str = ir
@@ -136,7 +136,7 @@ class Worker(QRunnable):
 
 class MainWindow(Window):
     def __init__(self):
-        super().__init__("ui/MainWindow.ui")
+        super().__init__("ui/MainWindow_new.ui")
 
         self.dialog: Optional[SettingsDialog] = None
 
@@ -174,6 +174,9 @@ class MainWindow(Window):
         self.timerMainCycle = QTimer()
         self.timerMainCycle.setInterval(1)
         self.timerMainCycle.timeout.connect(self.main_cycle)
+
+        s = QSettings()
+        pprint(s.allKeys())
 
     # here we check if we are connected to iracing
     # so we can retrieve some data
@@ -246,7 +249,7 @@ class MainWindow(Window):
                 "cycles": 0,
                 "frames": []
             }
-        }        
+        }
         if self.last_irating != f"{data['IRating']}":
             update_required = True
             self.last_irating = f"{data['IRating']}"
@@ -274,13 +277,13 @@ class MainWindow(Window):
                     print("Race start")
                     self.start_hidden.setChecked(True)
                     update_required = True
-                    json['model']['frames'].append({"icon": Icons.start_hidden, "text": "GO GO GO!"})
+                    json['model']['frames'].append({"icon": Icons.start_hidden, "text": "Start"})
 
             if data['SessionFlags'] & Flags.checkered:
                 print("Checkered Flag")
                 self.checkered.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": Icons.checkered, "text": "Checkered"})
+                json['model']['frames'].append({"icon": Icons.checkered, "text": "Finish"})
 
             if data['SessionFlags'] & Flags.white:
                 print("White Flag")
@@ -328,7 +331,7 @@ class MainWindow(Window):
                 print("Yellow waving flag")
                 self.yellow_waving.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": Icons.yellow_waving, "text": "Yellow waving"})
+                json['model']['frames'].append({"icon": Icons.yellow_waving, "text": "Yellow"})
 
             if data['SessionFlags'] & Flags.one_lap_to_green:
                 print("One lap to green")
@@ -340,7 +343,7 @@ class MainWindow(Window):
                 print("Green flag held")
                 self.green_held.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": Icons.green_held, "text": "Green held"})
+                json['model']['frames'].append({"icon": Icons.green_held, "text": "Green"})
 
             if data['SessionFlags'] & Flags.ten_to_go:
                 print("Ten to go")
@@ -364,13 +367,13 @@ class MainWindow(Window):
                 print("Caution Flag")
                 self.cauting.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": Icons.cauting, "text": "Caution"})
+                json['model']['frames'].append({"icon": Icons.caution, "text": "Caution"})
 
             if data['SessionFlags'] & Flags.caution_waving:
                 print("Caution waving Flag")
                 self.caution_waving.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": Icons.caution_waving, "text": "Caution waving"})
+                json['model']['frames'].append({"icon": Icons.caution_waving, "text": "Caution"})
 
             if data['SessionFlags'] & Flags.black:
                 print("Black Flag")
@@ -394,7 +397,7 @@ class MainWindow(Window):
                 print("Meatball Flag")
                 self.repair.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": Icons.repair, "text": "Meatball"})
+                json['model']['frames'].append({"icon": Icons.repair, "text": "Damage"})
           
             self.last_flags = data['SessionFlags']
 
@@ -430,6 +433,9 @@ class MainWindow(Window):
 
     def send_notification(self, json):
         s = QSettings()
+
+        pprint(json)
+
         try:
             self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
         except:
@@ -438,6 +444,8 @@ class MainWindow(Window):
             self.lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
         except:
             self.lametric_api_key = None
+
+        pprint([self.lametric_ip, self.lametric_api_key])
         
         if self.lametric_ip and self.lametric_api_key:
             lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
@@ -467,11 +475,11 @@ class MainWindow(Window):
         self.open_dialog()
 
     @pyqtSlot()
-    def on_pushButton_clicked(self):
+    def on_settingsButton_clicked(self):
         self.open_dialog()
 
     @pyqtSlot()
-    def on_pushButtonModal_clicked(self):
+    def on_settingsButtonModal_clicked(self):
         self.open_dialog(True)
 
     def open_dialog(self, modal: bool = False):
@@ -480,6 +488,31 @@ class MainWindow(Window):
 
         self.dialog.show(modal)
 
+    @pyqtSlot()
+    def on_testButton_clicked(self):
+        json = {
+            "priority": "info",
+            "icon_type": "none",
+            "model": {
+                "cycles": 0,
+                "frames": []
+            }
+        }
+        json['model']['frames'].append({"icon": Icons.start_hidden, "text": "Start"})
+        json['model']['frames'].append({"icon": Icons.checkered, "text": "Finish"})
+        json['model']['frames'].append({"icon": Icons.white, "text": "White"})
+        json['model']['frames'].append({"icon": Icons.green, "text": "Green"})
+        json['model']['frames'].append({"icon": Icons.yellow, "text": "Yellow"})
+        json['model']['frames'].append({"icon": Icons.red, "text": "Red"})
+        json['model']['frames'].append({"icon": Icons.blue, "text": "Blue"})
+        json['model']['frames'].append({"icon": Icons.black, "text": "Black"})
+        json['model']['frames'].append({"icon": Icons.disqualify, "text": "DQ"})
+        json['model']['frames'].append({"icon": Icons.repair, "text": "Damage"})
+        json['model']['frames'].append({"icon": Icons.furled, "text": "Warn"})
+        json['model']['frames'].append({"icon": Icons.debris, "text": "Debris"})
+    
+        self.send_notification(json)
+
     def closeEvent(self, e):
         super().closeEvent(e)
         self.ir.shutdown()
@@ -487,7 +520,7 @@ class MainWindow(Window):
         QCoreApplication.exit()
 
 
-class SettingsDialog(Settings):
+class SettingsDialog(Dialog):
     def __init__(self):
         super(SettingsDialog, self).__init__("ui/SettingsDialog.ui")
 
@@ -499,6 +532,16 @@ class SettingsDialog(Settings):
         e.accept()
 
 
+class MessageDialog(Dialog):
+    def __init__(self):
+        super(MessageDialog, self).__init__("ui/MessageDialog.ui")
+
+        
+
+    def closeEvent(self, e):
+        super().closeEvent(e)
+        e.accept()
+
 if __name__ == "__main__":
     QCoreApplication.setOrganizationName("Fuzzwah")
     QCoreApplication.setApplicationName("LaMetric iRacing Data Sender")
@@ -507,6 +550,7 @@ if __name__ == "__main__":
     qapp = QApplication(sys.argv)
 
     root = MainWindow()
+    root.resize(800, 300)
     root.show()
     ret = qapp.exec_()
     sys.exit(ret)

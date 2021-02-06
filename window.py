@@ -350,7 +350,7 @@ class Window(QMainWindow, SaveWindow):
         SaveWindow.closeEvent(self, e)
 
 
-class Settings(QDialog, SaveWindow):
+class Dialog(QDialog, SaveWindow):
     def __init__(self, uifile: str, relativity: PathRelativity = PathRelativity.MAINPY):
         realfile = _abspath(uifile, relativity)
         if not realfile.is_file():
@@ -362,8 +362,6 @@ class Settings(QDialog, SaveWindow):
         loadUi(str(realfile), self)
 
         self.s = QSettings()
-        print(self.s.allKeys())
-        
 
     def show(self, modal: bool = False):
         SaveWindow.show(self)
