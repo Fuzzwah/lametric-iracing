@@ -54,6 +54,14 @@ class Icons(object):
     ten_to_go: str = ir
     five_to_go: str = ir
 
+    # license icons
+    license_r: str = 'i43591'
+    license_d: str = 'i43592'
+    license_c: str = 'i43593'
+    license_b: str = 'i43594'
+    license_a: str = 'i43595'
+    license_p: str = 'i43596'
+
 @dataclass
 class State(object):
     """ a generic object to pass around information regarding the current state
@@ -391,7 +399,7 @@ class MainWindow(Window):
                 print("Furled black Flag")
                 self.furled.setChecked(True)
                 update_required = True
-                json['model']['frames'].append({"icon": Icons.furled, "text": "Furled black"})
+                json['model']['frames'].append({"icon": Icons.furled, "text": "Warning"})
 
             if data['SessionFlags'] & Flags.repair:
                 print("Meatball Flag")
