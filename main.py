@@ -60,6 +60,8 @@ class Icons(object):
     """
 
     ir: str = 'i43085'
+
+    # flags
     start_hidden: str = 'a43445'
     checkered: str = 'a43490'
     white: str = 'a43444'
@@ -94,6 +96,10 @@ class Icons(object):
     # purple for fastest lap
     purple: str = 'i43599'
 
+    position: str = 'i43642'
+    lap: str = 'i43645'
+    
+
 
 @dataclass
 class State(object):
@@ -101,9 +107,11 @@ class State(object):
     """
 
     ir_connected: bool = False
+    car_in_world: bool = False
     last_car_setup_tick: int = -1
     start_hidden_sent: bool = False
     last_send: str = None
+    last_flags: int = None
 
 
 class WorkerSignals(QObject):
@@ -193,7 +201,6 @@ class MainWindow(Window):
         self.setStatusBar(sb)
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
 
-        self.register_widget(self.checkBox_Name, default=True)
         self.register_widget(self.checkBox_IRating, default=True)
         self.register_widget(self.checkBox_License, default=True)
         self.register_widget(self.checkBox_Position, default=True)
@@ -223,12 +230,6 @@ class MainWindow(Window):
         self.previous_data = Data()
         self.data = Data()
 
-        self.ir_connected = False
-        self.car_in_world = False
-        self.last_irating = None
-        self.last_flags = None
-
-
         self.threadpool = QThreadPool()
 
         self.timerConnectionMonitor = QTimer()
@@ -251,23 +252,20 @@ class MainWindow(Window):
     # here we check if we are connected to iracing
     # so we can retrieve some data
     def irsdk_connection_check(self):
+        print(f"self.state.ir_connected: {self.state.ir_connected}")
+        print(f"self.ir.is_initialized: {self.ir.is_initialized}")
+        print(f"self.ir.is_connected: {self.ir.is_connected}")
         if self.state.ir_connected and not (self.ir.is_initialized and self.ir.is_connected):
-            self.state.ir_connected = False
-            # don't forget to reset your State variables
-            self.state.last_car_setup_tick = -1
-            # we are shutting down ir library (clearing all internal variables)
-            self.ir.shutdown()
             return False
         elif not self.state.ir_connected and self.ir.startup(silent=True) and self.ir.is_initialized and self.ir.is_connected:
-            self.state.ir_connected = True
             return True
         elif self.ir.is_initialized and self.ir.is_connected:
             return True
              
     def irsdk_connection_controller(self, now_connected):
-        if now_connected and not self.ir_connected:
+        if now_connected and not self.state.ir_connected:
             self.onConnection()
-        elif not now_connected and self.ir_connected:
+        elif not now_connected and self.state.ir_connected:
             self.onDisconnection()
  
     def irsdkConnectionMonitor(self):
@@ -295,10 +293,7 @@ class MainWindow(Window):
         self.update_data('flags', int(self.ir['SessionFlags']))
         self.ir.unfreeze_var_buffer_latest()
 
-        pprint(self.data)
-
     def process_data(self):
-        print('processing')
 
         if self.last_flags != self.data.flags and self.checkBox_Flags.isChecked():
             # if there's a flag, it should over ride anything else that is trying to be displayed... so we empty the json
@@ -416,6 +411,21 @@ class MainWindow(Window):
             self.state.last_send = "best_lap"
             self.send_notification(json)            
 
+        elif self.previous_data.position != self.data.position and self.state.last_send != "position":
+            print(f"position: {self.data.position}")
+            self.lineEdit_Position.setText(f"{self.data.position}")
+            json = {
+                "priority": "info",
+                "icon_type":"none",
+                "model": {
+                    "cycles": 1,
+                    "frames": [{"icon": Icons.position, "text": f"{self.data.position}"}]
+                }
+            }
+            self.state.last_send = "best_lap"
+            self.send_notification(json)            
+
+
         elif self.state.last_send != "ratings":
             print("ratings")
             json = {
@@ -465,7 +475,7 @@ class MainWindow(Window):
             self.timerConnectionMonitor.stop()
         except:
             pass
-        self.ir_connected = True
+        self.state.ir_connected = True
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
         self.statusBar().showMessage(('STATUS: iRacing client detected.'))
 
@@ -489,7 +499,9 @@ class MainWindow(Window):
         self.timerMainCycle.start()
 
     def onDisconnection(self):
-        self.ir_connected = False
+        self.state = State()
+        self.ir.shutdown()
+
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
         self.timerMainCycle.stop()

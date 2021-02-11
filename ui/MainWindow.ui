@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>630</width>
-    <height>289</height>
+    <height>279</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -39,12 +39,18 @@
              <number>5</number>
             </property>
             <item>
-             <widget class="QCheckBox" name="checkBox_Name">
-              <property name="text">
-               <string>Name</string>
+             <widget class="QLabel" name="labelName">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>14</height>
+               </size>
               </property>
-              <property name="checked">
-               <bool>true</bool>
+              <property name="text">
+               <string>Name     </string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
               </property>
              </widget>
             </item>
