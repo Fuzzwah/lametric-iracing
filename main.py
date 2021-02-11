@@ -43,6 +43,7 @@ class Data(object):
     fuel_per_lap: float = None
     fuel_left: float = None
     time_left: float = None
+    track_temp: float = None
     flags: int = None
 
 
@@ -222,12 +223,12 @@ class MainWindow(Window):
         self.threadpool = QThreadPool()
 
         self.timerConnectionMonitor = QTimer()
-        self.timerConnectionMonitor.setInterval(1000)
+        self.timerConnectionMonitor.setInterval(10000)
         self.timerConnectionMonitor.timeout.connect(self.irsdkConnectionMonitor)
         self.timerConnectionMonitor.start()
 
         self.timerMainCycle = QTimer()
-        self.timerMainCycle.setInterval(1)
+        self.timerMainCycle.setInterval(10000)
         self.timerMainCycle.timeout.connect(self.main_cycle)
 
         s = QSettings()
@@ -271,34 +272,45 @@ class MainWindow(Window):
 
     def data_collection_cycle(self):
         self.ir.freeze_var_buffer_latest()
-        self.update_data('irating', int(self.driver['IRating']))
-        self.update_data('license_string', self.driver['LicString'])
-        license_letter, safety_rating = self.driver['LicString'].split(' ')
+        for dvr in self.ir['DriverInfo']['Drivers']:
+            if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
+                driver = dvr
+                break
+        self.update_data('name', driver['UserName'])
+        self.update_data('irating', int(driver['IRating']))
+        self.update_data('license_string', driver['LicString'])
+        license_letter, safety_rating = driver['LicString'].split(' ')
         self.update_data('license_letter', license_letter)
         self.update_data('safety_rating', float(safety_rating))
+        self.update_data('position', self.ir['PlayerCarClassPosition'])
         self.update_data('best_laptime', float(self.ir['LapBestLapTime']))
         self.update_data('last_laptime', float(self.ir['LapLastLapTime']))
+        self.update_data('fuel_left', float(self.ir['FuelLevel']))
+        self.update_data('laps', self.ir['LapCompleted'])
+        self.update_data('laps_left', float(self.ir['SessionLapsRemainEx']))
+        self.update_data('time_left', float(self.ir['SessionTimeRemain']))
         self.update_data('flags', int(self.ir['SessionFlags']))
         self.ir.unfreeze_var_buffer_latest()
 
+        pprint(self.data)
+
     def process_data(self):
-        update_required = False
-        json = {
-            "priority": "info",
-            "icon_type":"none",
-            "model": {
-                "cycles": 0,
-                "frames": []
-            }
-        }
+        print('processing')
 
         if self.previous_data.name != self.data.name:
             self.lineEdit_Name.setText(self.data.name)
 
         if self.previous_data.irating != self.data.irating:
+            json = {
+                "priority": "info",
+                "icon_type":"none",
+                "model": {
+                    "cycles": 0,
+                    "frames": []
+                }
+            }            
             self.lineEdit_IRating.setText(f"{self.data.irating:,}")
             if self.checkBox_IRating.isChecked():
-                update_required = True
                 json["model"]["frames"].append({"icon": "i43085", "text": f"{self.data.irating:,}"})
 
         if self.previous_data.license_string != self.data.license_string:
@@ -318,13 +330,13 @@ class MainWindow(Window):
                 elif self.data.license_letter == 'P':
                     icon = Icons.license_letter_p
 
-                update_required = True
                 json["model"]["frames"].append({"icon": icon, "text": f"{self.data.safety_rating}"})
+                if len( json["model"]["frames"]) > 0:
+                    self.send_notification(json)            
 
         if self.previous_data.best_laptime != self.data.best_laptime:
             # if there's a new best lap, it should over ride ir and license... so we make a new json
             self.lineEdit_BestLap.setText(f"{self.data.best_laptime}")
-            update_required = True
             json = {
                 "priority": "info",
                 "icon_type":"none",
@@ -333,6 +345,7 @@ class MainWindow(Window):
                     "frames": [{"icon": Icons.purple, "text": f"{self.data.best_laptime}"}]
                 }
             }
+            self.send_notification(json)            
 
         if self.previous_data.last_laptime != f"{self.data.last_laptime}":
             self.lineEdit_LastLap.setText(f"{self.data.last_laptime}")
@@ -340,10 +353,10 @@ class MainWindow(Window):
         if self.last_flags != self.data.flags and self.checkBox_Flags.isChecked():
             # if there's a flag, it should over ride anything else that is trying to be displayed... so we empty the json
             json = {
-                "priority": "info",
+                "priority": "warning",
                 "icon_type":"none",
                 "model": {
-                    "cycles": 1,
+                    "cycles": 2,
                     "frames": []
                 }
             }
@@ -352,116 +365,94 @@ class MainWindow(Window):
             if self.data.flags & Flags.start_hidden and not self.state.race_started:
                 self.state.race_started = True
                 print("Race start")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.start_hidden, "text": "Start"})
 
             if self.data.flags & Flags.checkered:
                 print("Checkered Flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.checkered, "text": "Finish"})
 
             if self.data.flags & Flags.white:
                 print("White Flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.white, "text": "White"})
 
             if self.data.flags & Flags.green:
                 print("Green flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.green, "text": "Green"})
 
             if self.data.flags & Flags.yellow:
                 print("Yellow flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.yellow, "text": "Yellow"})
 
             if self.data.flags & Flags.red:
                 print("Red flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.red, "text": "Red"})
 
             if self.data.flags & Flags.blue:
                 print("Blue flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.blue, "text": "Blue"})
 
             if self.data.flags & Flags.debris:
                 print("Debris flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.debris, "text": "Debris"})
 
             if self.data.flags & Flags.crossed:
                 print("Crossed flags")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.crossed, "text": "Crossed"})
 
             if self.data.flags & Flags.yellow_waving:
                 print("Yellow waving flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.yellow_waving, "text": "Yellow"})
 
             if self.data.flags & Flags.one_lap_to_green:
                 print("One lap to green")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.one_lap_to_green, "text": "1toGreen"})
 
             if self.data.flags & Flags.green_held:
                 print("Green flag held")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.green_held, "text": "Green"})
 
             if self.data.flags & Flags.ten_to_go:
                 print("Ten to go")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.ten_to_go, "text": "10 to go"})
 
             if self.data.flags & Flags.five_to_go:
                 print("Five to go")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.five_to_go, "text": "5 to go"})
 
             if self.data.flags & Flags.random_waving:
                 print("Random waving flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.random_waving, "text": "Random"})
 
             if self.data.flags & Flags.caution:
                 print("Caution Flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.caution, "text": "Caution"})
 
             if self.data.flags & Flags.caution_waving:
                 print("Caution waving Flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.caution_waving, "text": "Caution"})
 
             if self.data.flags & Flags.black:
                 print("Black Flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.black, "text": "Black"})
 
             if self.data.flags & Flags.disqualify:
                 print("DQ Flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.disqualify, "text": "DQ"})
 
             if self.data.flags & Flags.furled:
                 print("Furled black Flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.furled, "text": "Warning"})
 
             if self.data.flags & Flags.repair:
                 print("Meatball Flag")
-                update_required = True
                 json['model']['frames'].append({"icon": Icons.repair, "text": "Damage"})
           
             self.last_flags = self.data.flags
 
-        if update_required:
-            self.send_notification(json)
+            if len( json["model"]["frames"]) > 0:
+                self.send_notification(json)            
 
         self.previous_data = self.data
-        
 
     def main_cycle(self):
         main_cycle_worker = Worker(self.data_collection_cycle)
@@ -476,7 +467,7 @@ class MainWindow(Window):
 
         for dvr in self.ir['DriverInfo']['Drivers']:
             if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
-                self.driver = dvr
+                pprint(dvr)
                 break
 
         self.timerMainCycle.start()
@@ -488,6 +479,7 @@ class MainWindow(Window):
         self.timerMainCycle.stop()
 
     def send_notification(self, json):
+        pprint(json)
         s = QSettings()
 
         try:
