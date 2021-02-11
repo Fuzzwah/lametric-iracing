@@ -83,6 +83,9 @@ class Icons(object):
     license_letter_a: str = 'i43595'
     license_letter_p: str = 'i43596'
 
+    # purple for fastest lap
+    purple: str = 'i43599'
+
 @dataclass
 class State(object):
     """ a generic object to pass around information regarding the current state
@@ -286,13 +289,19 @@ class MainWindow(Window):
                 "frames": []
             }
         }
+
+        if self.lineEdit_Name.text is not self.data.name:
+            self.lineEdit_Name.setText(self.data.name)
+
         if self.last_irating != self.data.irating:
-            update_required = True
             self.last_irating = self.data.irating
             self.lineEdit_IRating.setText(self.data.irating)
             if self.checkBox_IRating.isChecked():
+                update_required = True
                 json["model"]["frames"].append({"icon": "i43085", "text": self.data.irating})
 
+        if self.lineEdit_License.text is not self.data.license_string:
+            self.lineEdit_License.setText(self.data.license_string)
             if self.checkBox_License.isChecked():
                 icon = Icons.ir
                 if self.data.license_letter == 'R':
@@ -307,19 +316,28 @@ class MainWindow(Window):
                     icon = Icons.license_letter_a
                 elif self.data.license_letter == 'P':
                     icon = Icons.license_letter_p
+
+                update_required = True
                 json["model"]["frames"].append({"icon": icon, "text": self.data.safety_rating})
-        
-        if self.lineEdit_Name.text is not self.data.name:
-            self.lineEdit_Name.setText(self.data.name)
-        if self.lineEdit_License.text is not self.data.license_string:
-            self.lineEdit_License.setText(self.data.license_string)
+
         if self.lineEdit_BestLap.text is not self.data.best_laptime:
+            # if there's a new best lap, it should over ride ir and license... so we make a new json
             self.lineEdit_BestLap.setText(self.data.best_laptime)
+            update_required = True
+            json = {
+                "priority": "info",
+                "icon_type":"none",
+                "model": {
+                    "cycles": 0,
+                    "frames": [{"icon": Icons.purple, "text": self.data.best_laptime}]
+                }
+            }
+
         if self.lineEdit_LastLap.text is not self.data.last_laptime:
             self.lineEdit_LastLap.setText(self.data.last_laptime)
 
         if not self.last_flags == self.data.flags and self.checkBox_Flags.isChecked():
-
+            # if there's a flag, it should over ride anything else that is trying to be displayed... so we empty the json
             json = {
                 "priority": "info",
                 "icon_type":"none",
@@ -330,12 +348,11 @@ class MainWindow(Window):
             }
             update_required = True
 
-            if self.data.flags & Flags.start_hidden:
-                if not self.state.race_started:
-                    self.state.race_started = True
-                    print("Race start")
-                    update_required = True
-                    json['model']['frames'].append({"icon": Icons.start_hidden, "text": "Start"})
+            if self.data.flags & Flags.start_hidden and not self.state.race_started:
+                self.state.race_started = True
+                print("Race start")
+                update_required = True
+                json['model']['frames'].append({"icon": Icons.start_hidden, "text": "Start"})
 
             if self.data.flags & Flags.checkered:
                 print("Checkered Flag")
