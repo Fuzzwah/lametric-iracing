@@ -26,8 +26,8 @@ from pyirsdk import (
 
 
 @dataclass
-class Data(object):
-    """ a generic object to collect up the data we need from the irsdk
+class Driver(object):
+    """ a generic object to collect up the information about the driver
     """
 
     name: str = None
@@ -35,6 +35,13 @@ class Data(object):
     license_string: str = None
     license_letter: str = None
     safety_rating: float = None
+
+
+@dataclass
+class Data(object):
+    """ a generic object to collect up the data we need from the irsdk
+    """
+
     position: int = None
     laps: int = None
     laps_left: int = None
@@ -95,7 +102,8 @@ class State(object):
 
     ir_connected: bool = False
     last_car_setup_tick: int = -1
-    race_started: bool = False
+    start_hidden_sent: bool = False
+    last_send: str = None
 
 
 class WorkerSignals(QObject):
@@ -220,12 +228,17 @@ class MainWindow(Window):
         self.last_irating = None
         self.last_flags = None
 
+
         self.threadpool = QThreadPool()
 
         self.timerConnectionMonitor = QTimer()
-        self.timerConnectionMonitor.setInterval(10000)
+        self.timerConnectionMonitor.setInterval(5000)
         self.timerConnectionMonitor.timeout.connect(self.irsdkConnectionMonitor)
-        self.timerConnectionMonitor.start()
+
+        if self.irsdk_connection_check():
+            self.irsdk_connection_controller()
+        else:
+            self.timerConnectionMonitor.start()
 
         self.timerMainCycle = QTimer()
         self.timerMainCycle.setInterval(10000)
@@ -272,16 +285,6 @@ class MainWindow(Window):
 
     def data_collection_cycle(self):
         self.ir.freeze_var_buffer_latest()
-        for dvr in self.ir['DriverInfo']['Drivers']:
-            if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
-                driver = dvr
-                break
-        self.update_data('name', driver['UserName'])
-        self.update_data('irating', int(driver['IRating']))
-        self.update_data('license_string', driver['LicString'])
-        license_letter, safety_rating = driver['LicString'].split(' ')
-        self.update_data('license_letter', license_letter)
-        self.update_data('safety_rating', float(safety_rating))
         self.update_data('position', self.ir['PlayerCarClassPosition'])
         self.update_data('best_laptime', float(self.ir['LapBestLapTime']))
         self.update_data('last_laptime', float(self.ir['LapLastLapTime']))
@@ -297,59 +300,6 @@ class MainWindow(Window):
     def process_data(self):
         print('processing')
 
-        if self.previous_data.name != self.data.name:
-            self.lineEdit_Name.setText(self.data.name)
-
-        if self.previous_data.irating != self.data.irating:
-            json = {
-                "priority": "info",
-                "icon_type":"none",
-                "model": {
-                    "cycles": 0,
-                    "frames": []
-                }
-            }            
-            self.lineEdit_IRating.setText(f"{self.data.irating:,}")
-            if self.checkBox_IRating.isChecked():
-                json["model"]["frames"].append({"icon": "i43085", "text": f"{self.data.irating:,}"})
-
-        if self.previous_data.license_string != self.data.license_string:
-            self.lineEdit_License.setText(self.data.license_string)
-            if self.checkBox_License.isChecked():
-                icon = Icons.ir
-                if self.data.license_letter == 'R':
-                    icon = Icons.license_letter_r
-                elif self.data.license_letter == 'D':
-                    icon = Icons.license_letter_d
-                elif self.data.license_letter == 'C':
-                    icon = Icons.license_letter_c
-                elif self.data.license_letter == 'B':
-                    icon = Icons.license_letter_b
-                elif self.data.license_letter == 'A':
-                    icon = Icons.license_letter_a
-                elif self.data.license_letter == 'P':
-                    icon = Icons.license_letter_p
-
-                json["model"]["frames"].append({"icon": icon, "text": f"{self.data.safety_rating}"})
-                if len( json["model"]["frames"]) > 0:
-                    self.send_notification(json)            
-
-        if self.previous_data.best_laptime != self.data.best_laptime:
-            # if there's a new best lap, it should over ride ir and license... so we make a new json
-            self.lineEdit_BestLap.setText(f"{self.data.best_laptime}")
-            json = {
-                "priority": "info",
-                "icon_type":"none",
-                "model": {
-                    "cycles": 1,
-                    "frames": [{"icon": Icons.purple, "text": f"{self.data.best_laptime}"}]
-                }
-            }
-            self.send_notification(json)            
-
-        if self.previous_data.last_laptime != f"{self.data.last_laptime}":
-            self.lineEdit_LastLap.setText(f"{self.data.last_laptime}")
-
         if self.last_flags != self.data.flags and self.checkBox_Flags.isChecked():
             # if there's a flag, it should over ride anything else that is trying to be displayed... so we empty the json
             json = {
@@ -360,10 +310,9 @@ class MainWindow(Window):
                     "frames": []
                 }
             }
-            update_required = True
 
-            if self.data.flags & Flags.start_hidden and not self.state.race_started:
-                self.state.race_started = True
+            if self.data.flags & Flags.start_hidden and not self.state.start_hidden_sent:
+                self.state.start_hidden_sent = True
                 print("Race start")
                 json['model']['frames'].append({"icon": Icons.start_hidden, "text": "Start"})
 
@@ -450,7 +399,58 @@ class MainWindow(Window):
             self.last_flags = self.data.flags
 
             if len( json["model"]["frames"]) > 0:
-                self.send_notification(json)            
+                self.state.last_send = "flags"
+                self.send_notification(json)
+
+        elif self.previous_data.best_laptime != self.data.best_laptime and self.state.last_send != "best_lap":
+            print(f"best_lap: {self.data.best_laptime}")
+            self.lineEdit_BestLap.setText(f"{self.data.best_laptime}")
+            json = {
+                "priority": "info",
+                "icon_type":"none",
+                "model": {
+                    "cycles": 1,
+                    "frames": [{"icon": Icons.purple, "text": f"{self.data.best_laptime}"}]
+                }
+            }
+            self.state.last_send = "best_lap"
+            self.send_notification(json)            
+
+        elif self.state.last_send != "ratings":
+            print("ratings")
+            json = {
+                "priority": "info",
+                "icon_type":"none",
+                "model": {
+                    "cycles": 0,
+                    "frames": []
+                }
+            }            
+            if self.checkBox_IRating.isChecked():
+                json["model"]["frames"].append({"icon": "i43085", "text": f"{self.data.irating:,}"})
+
+            if self.checkBox_License.isChecked():
+                icon = Icons.ir
+                if self.data.license_letter == 'R':
+                    icon = Icons.license_letter_r
+                elif self.data.license_letter == 'D':
+                    icon = Icons.license_letter_d
+                elif self.data.license_letter == 'C':
+                    icon = Icons.license_letter_c
+                elif self.data.license_letter == 'B':
+                    icon = Icons.license_letter_b
+                elif self.data.license_letter == 'A':
+                    icon = Icons.license_letter_a
+                elif self.data.license_letter == 'P':
+                    icon = Icons.license_letter_p
+
+                json["model"]["frames"].append({"icon": icon, "text": f"{self.data.safety_rating}"})
+                if len( json["model"]["frames"]) > 0:
+                    self.state.last_send = "ratings"
+                    self.send_notification(json)            
+
+        if self.previous_data.last_laptime != f"{self.data.last_laptime}":
+            self.lineEdit_LastLap.setText(f"{self.data.last_laptime}")
 
         self.previous_data = self.data
 
@@ -461,13 +461,29 @@ class MainWindow(Window):
         self.threadpool.start(main_cycle_worker)
 
     def onConnection(self):
+        try:
+            self.timerConnectionMonitor.stop()
+        except:
+            pass
         self.ir_connected = True
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
         self.statusBar().showMessage(('STATUS: iRacing client detected.'))
 
+        self.driver = Driver()
+
         for dvr in self.ir['DriverInfo']['Drivers']:
             if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
-                pprint(dvr)
+                self.driver.name = dvr['UserName']
+                self.driver.irating = int(dvr['IRating'])
+                self.driver.license_string = dvr['LicString']
+                license_letter, safety_rating = dvr['LicString'].split(' ')
+                self.driver.license_letter = license_letter
+                self.driver.safety_rating = float(safety_rating)
+
+                self.lineEdit_Name.setText(dvr['UserName'])
+                self.lineEdit_IRating.setText(f"{self.data.irating:,}")
+                self.lineEdit_License.setText(self.data.license_string)
+
                 break
 
         self.timerMainCycle.start()
@@ -477,6 +493,7 @@ class MainWindow(Window):
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
         self.timerMainCycle.stop()
+        self.timerConnectionMonitor.start()
 
     def send_notification(self, json):
         pprint(json)
