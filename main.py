@@ -235,14 +235,14 @@ class MainWindow(Window):
         self.timerConnectionMonitor.setInterval(5000)
         self.timerConnectionMonitor.timeout.connect(self.irsdkConnectionMonitor)
 
-        if self.irsdk_connection_check():
-            self.irsdk_connection_controller()
-        else:
-            self.timerConnectionMonitor.start()
-
         self.timerMainCycle = QTimer()
         self.timerMainCycle.setInterval(10000)
         self.timerMainCycle.timeout.connect(self.main_cycle)
+
+        if self.irsdk_connection_check():
+            self.irsdk_connection_controller(True)
+        else:
+            self.timerConnectionMonitor.start()
 
         s = QSettings()
         #s.clear()
@@ -427,24 +427,24 @@ class MainWindow(Window):
                 }
             }            
             if self.checkBox_IRating.isChecked():
-                json["model"]["frames"].append({"icon": "i43085", "text": f"{self.data.irating:,}"})
+                json["model"]["frames"].append({"icon": "i43085", "text": f"{self.driver.irating:,}"})
 
             if self.checkBox_License.isChecked():
                 icon = Icons.ir
-                if self.data.license_letter == 'R':
+                if self.driver.license_letter == 'R':
                     icon = Icons.license_letter_r
-                elif self.data.license_letter == 'D':
+                elif self.driver.license_letter == 'D':
                     icon = Icons.license_letter_d
-                elif self.data.license_letter == 'C':
+                elif self.driver.license_letter == 'C':
                     icon = Icons.license_letter_c
-                elif self.data.license_letter == 'B':
+                elif self.driver.license_letter == 'B':
                     icon = Icons.license_letter_b
-                elif self.data.license_letter == 'A':
+                elif self.driver.license_letter == 'A':
                     icon = Icons.license_letter_a
-                elif self.data.license_letter == 'P':
+                elif self.driver.license_letter == 'P':
                     icon = Icons.license_letter_p
 
-                json["model"]["frames"].append({"icon": icon, "text": f"{self.data.safety_rating}"})
+                json["model"]["frames"].append({"icon": icon, "text": f"{self.driver.safety_rating}"})
                 if len( json["model"]["frames"]) > 0:
                     self.state.last_send = "ratings"
                     self.send_notification(json)            
@@ -480,9 +480,9 @@ class MainWindow(Window):
                 self.driver.license_letter = license_letter
                 self.driver.safety_rating = float(safety_rating)
 
-                self.lineEdit_Name.setText(dvr['UserName'])
-                self.lineEdit_IRating.setText(f"{self.data.irating:,}")
-                self.lineEdit_License.setText(self.data.license_string)
+                self.lineEdit_Name.setText(self.driver.name)
+                self.lineEdit_IRating.setText(f"{self.driver.irating:,}")
+                self.lineEdit_License.setText(self.driver.license_string)
 
                 break
 
@@ -576,6 +576,8 @@ class MainWindow(Window):
     def closeEvent(self, e):
         super().closeEvent(e)
         self.ir.shutdown()
+        self.timerConnectionMonitor.stop()
+        self.timerMainCycle.stop()
         e.accept()
         QCoreApplication.exit()
 
@@ -595,8 +597,6 @@ class SettingsDialog(Dialog):
 class MessageDialog(Dialog):
     def __init__(self):
         super(MessageDialog, self).__init__("ui/MessageDialog.ui")
-
-        
 
     def closeEvent(self, e):
         super().closeEvent(e)
