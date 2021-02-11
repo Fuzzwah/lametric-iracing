@@ -269,7 +269,7 @@ class MainWindow(Window):
 
     def data_collection_cycle(self):
         self.ir.freeze_var_buffer_latest()
-        self.update_data('irating', f"{self.driver['IRating']:,}")
+        self.update_data('irating', int(self.driver['IRating']))
         self.update_data('license_string', self.driver['LicString'])
         license_letter, safety_rating = self.driver['LicString'].split(' ')
         self.update_data('license_letter', license_letter)
@@ -295,7 +295,7 @@ class MainWindow(Window):
 
         if self.last_irating != self.data.irating:
             self.last_irating = self.data.irating
-            self.lineEdit_IRating.setText(f"{self.data.irating}")
+            self.lineEdit_IRating.setText(f"{self.data.irating:,}")
             if self.checkBox_IRating.isChecked():
                 update_required = True
                 json["model"]["frames"].append({"icon": "i43085", "text": f"{self.data.irating:,}"})
