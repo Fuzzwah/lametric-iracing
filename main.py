@@ -295,10 +295,10 @@ class MainWindow(Window):
 
         if self.last_irating != self.data.irating:
             self.last_irating = self.data.irating
-            self.lineEdit_IRating.setText(self.data.irating)
+            self.lineEdit_IRating.setText(f"{self.data.irating}")
             if self.checkBox_IRating.isChecked():
                 update_required = True
-                json["model"]["frames"].append({"icon": "i43085", "text": self.data.irating})
+                json["model"]["frames"].append({"icon": "i43085", "text": f"{self.data.irating:,}"})
 
         if self.lineEdit_License.text is not self.data.license_string:
             self.lineEdit_License.setText(self.data.license_string)
@@ -318,23 +318,23 @@ class MainWindow(Window):
                     icon = Icons.license_letter_p
 
                 update_required = True
-                json["model"]["frames"].append({"icon": icon, "text": self.data.safety_rating})
+                json["model"]["frames"].append({"icon": icon, "text": f"{self.data.safety_rating}"})
 
-        if self.lineEdit_BestLap.text is not self.data.best_laptime:
+        if self.lineEdit_BestLap.text is not f"{self.data.best_laptime}":
             # if there's a new best lap, it should over ride ir and license... so we make a new json
-            self.lineEdit_BestLap.setText(self.data.best_laptime)
+            self.lineEdit_BestLap.setText(f"{self.data.best_laptime}")
             update_required = True
             json = {
                 "priority": "info",
                 "icon_type":"none",
                 "model": {
                     "cycles": 0,
-                    "frames": [{"icon": Icons.purple, "text": self.data.best_laptime}]
+                    "frames": [{"icon": Icons.purple, "text": f"{self.data.best_laptime}"}]
                 }
             }
 
-        if self.lineEdit_LastLap.text is not self.data.last_laptime:
-            self.lineEdit_LastLap.setText(self.data.last_laptime)
+        if self.lineEdit_LastLap.text is not f"{self.data.last_laptime}":
+            self.lineEdit_LastLap.setText(f"{self.data.last_laptime}")
 
         if not self.last_flags == self.data.flags and self.checkBox_Flags.isChecked():
             # if there's a flag, it should over ride anything else that is trying to be displayed... so we empty the json
