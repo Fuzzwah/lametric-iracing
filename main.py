@@ -86,6 +86,7 @@ class Icons(object):
     # purple for fastest lap
     purple: str = 'i43599'
 
+
 @dataclass
 class State(object):
     """ a generic object to pass around information regarding the current state
@@ -210,6 +211,7 @@ class MainWindow(Window):
 
         self.ir = IRSDK()
         self.state = State()
+        self.previous_data = Data()
         self.data = Data()
 
         self.ir_connected = False
@@ -290,17 +292,16 @@ class MainWindow(Window):
             }
         }
 
-        if self.lineEdit_Name.text is not self.data.name:
+        if self.previous_data.name != self.data.name:
             self.lineEdit_Name.setText(self.data.name)
 
-        if self.last_irating != self.data.irating:
-            self.last_irating = self.data.irating
+        if self.previous_data.irating != self.data.irating:
             self.lineEdit_IRating.setText(f"{self.data.irating:,}")
             if self.checkBox_IRating.isChecked():
                 update_required = True
                 json["model"]["frames"].append({"icon": "i43085", "text": f"{self.data.irating:,}"})
 
-        if self.lineEdit_License.text is not self.data.license_string:
+        if self.previous_data.license_string != self.data.license_string:
             self.lineEdit_License.setText(self.data.license_string)
             if self.checkBox_License.isChecked():
                 icon = Icons.ir
@@ -320,7 +321,7 @@ class MainWindow(Window):
                 update_required = True
                 json["model"]["frames"].append({"icon": icon, "text": f"{self.data.safety_rating}"})
 
-        if self.lineEdit_BestLap.text is not f"{self.data.best_laptime}":
+        if self.previous_data.best_laptime != self.data.best_laptime:
             # if there's a new best lap, it should over ride ir and license... so we make a new json
             self.lineEdit_BestLap.setText(f"{self.data.best_laptime}")
             update_required = True
@@ -328,21 +329,21 @@ class MainWindow(Window):
                 "priority": "info",
                 "icon_type":"none",
                 "model": {
-                    "cycles": 0,
+                    "cycles": 1,
                     "frames": [{"icon": Icons.purple, "text": f"{self.data.best_laptime}"}]
                 }
             }
 
-        if self.lineEdit_LastLap.text is not f"{self.data.last_laptime}":
+        if self.previous_data.last_laptime != f"{self.data.last_laptime}":
             self.lineEdit_LastLap.setText(f"{self.data.last_laptime}")
 
-        if not self.last_flags == self.data.flags and self.checkBox_Flags.isChecked():
+        if self.last_flags != self.data.flags and self.checkBox_Flags.isChecked():
             # if there's a flag, it should over ride anything else that is trying to be displayed... so we empty the json
             json = {
                 "priority": "info",
                 "icon_type":"none",
                 "model": {
-                    "cycles": 0,
+                    "cycles": 1,
                     "frames": []
                 }
             }
@@ -402,7 +403,7 @@ class MainWindow(Window):
             if self.data.flags & Flags.one_lap_to_green:
                 print("One lap to green")
                 update_required = True
-                json['model']['frames'].append({"icon": Icons.one_lap_to_green, "text": "1 to Green"})
+                json['model']['frames'].append({"icon": Icons.one_lap_to_green, "text": "1toGreen"})
 
             if self.data.flags & Flags.green_held:
                 print("Green flag held")
@@ -459,6 +460,7 @@ class MainWindow(Window):
         if update_required:
             self.send_notification(json)
 
+        self.previous_data = self.data
         
 
     def main_cycle(self):
@@ -477,7 +479,6 @@ class MainWindow(Window):
                 self.driver = dvr
                 break
 
-        pprint(self.driver)
         self.timerMainCycle.start()
 
     def onDisconnection(self):
@@ -489,8 +490,6 @@ class MainWindow(Window):
     def send_notification(self, json):
         s = QSettings()
 
-        pprint(json)
-
         try:
             self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
         except:
@@ -500,8 +499,6 @@ class MainWindow(Window):
         except:
             self.lametric_api_key = None
 
-        pprint([self.lametric_ip, self.lametric_api_key])
-        
         if self.lametric_ip and self.lametric_api_key:
             lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
             headers = {"Content-Type": "application/json; charset=utf-8"}
@@ -514,7 +511,6 @@ class MainWindow(Window):
                     json=json,
                     timeout=1,
                 )
-                pprint(response)
             except requests.exceptions.RequestException as err:
                 print("Oops: Something Else: ", err)
             except requests.exceptions.ConnectionRefusedError as err:
