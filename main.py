@@ -26,6 +26,27 @@ from pyirsdk import (
 
 
 @dataclass
+class Data(object):
+    """ a generic object to collect up the data we need from the irsdk
+    """
+
+    name: str = None
+    irating: int = None
+    license_string: str = None
+    license_letter: str = None
+    safety_rating: float = None
+    position: int = None
+    laps: int = None
+    laps_left: int = None
+    last_laptime: float = None
+    best_laptime: float = None
+    fuel_per_lap: float = None
+    fuel_left: float = None
+    time_left: float = None
+    flags: int = None
+
+
+@dataclass
 class Icons(object):
     """ a generic object to pass around information regarding the icons
     """
@@ -55,12 +76,12 @@ class Icons(object):
     five_to_go: str = ir
 
     # license icons
-    license_r: str = 'i43591'
-    license_d: str = 'i43592'
-    license_c: str = 'i43593'
-    license_b: str = 'i43594'
-    license_a: str = 'i43595'
-    license_p: str = 'i43596'
+    license_letter_r: str = 'i43591'
+    license_letter_d: str = 'i43592'
+    license_letter_c: str = 'i43593'
+    license_letter_b: str = 'i43594'
+    license_letter_a: str = 'i43595'
+    license_letter_p: str = 'i43596'
 
 @dataclass
 class State(object):
@@ -144,7 +165,7 @@ class Worker(QRunnable):
 
 class MainWindow(Window):
     def __init__(self):
-        super().__init__("ui/MainWindow_new.ui")
+        super().__init__("ui/MainWindow.ui")
 
         self.dialog: Optional[SettingsDialog] = None
 
@@ -159,13 +180,34 @@ class MainWindow(Window):
         self.setStatusBar(sb)
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
 
-        self.register_widget(self.driverNameLineEdit)
-        self.register_widget(self.custIDLineEdit)
-        self.register_widget(self.iRatingLineEdit)
-        self.register_widget(self.licenseLineEdit)
+        self.register_widget(self.checkBox_Name, default=True)
+        self.register_widget(self.checkBox_IRating, default=True)
+        self.register_widget(self.checkBox_License, default=True)
+        self.register_widget(self.checkBox_Position, default=True)
+        self.register_widget(self.checkBox_Laps, default=True)
+        self.register_widget(self.checkBox_LapsLeft, default=True)
+        self.register_widget(self.lineEdit_Name)
+        self.register_widget(self.lineEdit_IRating)
+        self.register_widget(self.lineEdit_License)
+        self.register_widget(self.lineEdit_Position)
+        self.register_widget(self.lineEdit_Laps)
+        self.register_widget(self.lineEdit_LapsLeft)
+
+        self.register_widget(self.checkBox_LastLap, default=True)
+        self.register_widget(self.checkBox_BestLap, default=True)
+        self.register_widget(self.checkBox_FuelPerLap, default=True)
+        self.register_widget(self.checkBox_FuelLeft, default=True)
+        self.register_widget(self.checkBox_TimeLeft, default=True)
+        self.register_widget(self.checkBox_Flags, default=True)
+        self.register_widget(self.lineEdit_LastLap)
+        self.register_widget(self.lineEdit_BestLap)
+        self.register_widget(self.lineEdit_FuelPerLap)
+        self.register_widget(self.lineEdit_FuelLeft)
+        self.register_widget(self.lineEdit_TimeLeft)
 
         self.ir = IRSDK()
         self.state = State()
+        self.data = Data()
 
         self.ir_connected = False
         self.car_in_world = False
@@ -184,7 +226,8 @@ class MainWindow(Window):
         self.timerMainCycle.timeout.connect(self.main_cycle)
 
         s = QSettings()
-        pprint(s.allKeys())
+        #s.clear()
+        #pprint(s.allKeys())
 
     # here we check if we are connected to iracing
     # so we can retrieve some data
@@ -214,41 +257,26 @@ class MainWindow(Window):
         
         self.threadpool.start(monitor_worker)
 
+    def update_data(self, attr, value):
+        try:
+            setattr(self.data, attr, value)
+        except KeyError:
+            setattr(self.data, attr, None)
+
+
     def data_collection_cycle(self):
         self.ir.freeze_var_buffer_latest()
-        data = {}
-        try:
-            data["IRating"] = f"{self.driver['IRating']:,}"
-        except KeyError:
-            data["IRating"] = ""
-        try:
-            data["LicString"] = self.driver['LicString']
-        except KeyError:
-            data["LicString"] = ""
-        try:
-            data["LapBestLapTime"] = self.ir['LapBestLapTime']
-        except KeyError:
-            data["LapBestLapTime"] = ""
-        try:
-            data["UserID"] = f"{self.driver['UserID']}"
-        except KeyError:
-            data["UserID"] = ""
-        try:
-            data["UserName"] = self.driver['UserName']
-        except KeyError:
-            data["UserName"] = ""
-        try:
-            data["LapLastLapTime"] = self.ir['LapLastLapTime']
-        except KeyError:
-            data["LapLastLapTime"] = ""
-        try:
-            data['SessionFlags'] = self.ir['SessionFlags']
-        except KeyError:
-            data['SessionFlags'] = 0
+        self.update_data('irating', f"{self.driver['IRating']:,}")
+        self.update_data('license_string', self.driver['LicString'])
+        license_letter, safety_rating = self.driver['LicString'].split(' ')
+        self.update_data('license_letter', license_letter)
+        self.update_data('safety_rating', float(safety_rating))
+        self.update_data('best_laptime', float(self.ir['LapBestLapTime']))
+        self.update_data('last_laptime', float(self.ir['LapLastLapTime']))
+        self.update_data('flags', int(self.ir['SessionFlags']))
+        self.ir.unfreeze_var_buffer_latest()
 
-        return data
-
-    def process_data(self, data):
+    def process_data(self):
         update_required = False
         json = {
             "priority": "info",
@@ -258,156 +286,158 @@ class MainWindow(Window):
                 "frames": []
             }
         }
-        if self.last_irating != f"{data['IRating']}":
+        if self.last_irating != self.data.irating:
             update_required = True
-            self.last_irating = f"{data['IRating']}"
-            self.iRatingLineEdit.setText(f"{data['IRating']}")
-            json["model"]["frames"].append({"icon": "i43085", "text": data['IRating']})
-            json["model"]["frames"].append({"icon": "i43085", "text": data["LicString"]})
+            self.last_irating = self.data.irating
+            self.lineEdit_IRating.setText(self.data.irating)
+            if self.checkBox_IRating.isChecked():
+                json["model"]["frames"].append({"icon": "i43085", "text": self.data.irating})
+
+            if self.checkBox_License.isChecked():
+                icon = Icons.ir
+                if self.data.license_letter == 'R':
+                    icon = Icons.license_letter_r
+                elif self.data.license_letter == 'D':
+                    icon = Icons.license_letter_d
+                elif self.data.license_letter == 'C':
+                    icon = Icons.license_letter_c
+                elif self.data.license_letter == 'B':
+                    icon = Icons.license_letter_b
+                elif self.data.license_letter == 'A':
+                    icon = Icons.license_letter_a
+                elif self.data.license_letter == 'P':
+                    icon = Icons.license_letter_p
+                json["model"]["frames"].append({"icon": icon, "text": self.data.safety_rating})
         
-        if self.custIDLineEdit.text is not f"{data['UserID']}":
-            self.custIDLineEdit.setText(f"{data['UserID']}")
-        if self.driverNameLineEdit.text is not f"{data['UserName']}":
-            self.driverNameLineEdit.setText(f"{data['UserName']}")            
-        if self.licenseLineEdit.text is not f"{data['LicString']}":
-            self.licenseLineEdit.setText(f"{data['LicString']}")
-        if self.bestLapLineEdit.text is not f"{data['LapBestLapTime']}":
-            self.bestLapLineEdit.setText(f"{data['LapBestLapTime']}")
-        if self.lastLapLineEdit.text is not f"{data['LapLastLapTime']}":
-            self.lastLapLineEdit.setText(f"{data['LapLastLapTime']}")
+        if self.lineEdit_Name.text is not self.data.name:
+            self.lineEdit_Name.setText(self.data.name)
+        if self.lineEdit_License.text is not self.data.license_string:
+            self.lineEdit_License.setText(self.data.license_string)
+        if self.lineEdit_BestLap.text is not self.data.best_laptime:
+            self.lineEdit_BestLap.setText(self.data.best_laptime)
+        if self.lineEdit_LastLap.text is not self.data.last_laptime:
+            self.lineEdit_LastLap.setText(self.data.last_laptime)
 
-        if not self.last_flags == data['SessionFlags']:
+        if not self.last_flags == self.data.flags and self.checkBox_Flags.isChecked():
+
+            json = {
+                "priority": "info",
+                "icon_type":"none",
+                "model": {
+                    "cycles": 0,
+                    "frames": []
+                }
+            }
             update_required = True
 
-            if data['SessionFlags'] & Flags.start_hidden:
+            if self.data.flags & Flags.start_hidden:
                 if not self.state.race_started:
                     self.state.race_started = True
                     print("Race start")
-                    self.start_hidden.setChecked(True)
                     update_required = True
                     json['model']['frames'].append({"icon": Icons.start_hidden, "text": "Start"})
 
-            if data['SessionFlags'] & Flags.checkered:
+            if self.data.flags & Flags.checkered:
                 print("Checkered Flag")
-                self.checkered.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.checkered, "text": "Finish"})
 
-            if data['SessionFlags'] & Flags.white:
+            if self.data.flags & Flags.white:
                 print("White Flag")
-                self.white.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.white, "text": "White"})
 
-            if data['SessionFlags'] & Flags.green:
+            if self.data.flags & Flags.green:
                 print("Green flag")
-                self.green.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.green, "text": "Green"})
 
-            if data['SessionFlags'] & Flags.yellow:
+            if self.data.flags & Flags.yellow:
                 print("Yellow flag")
-                self.yellow.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.yellow, "text": "Yellow"})
 
-            if data['SessionFlags'] & Flags.red:
+            if self.data.flags & Flags.red:
                 print("Red flag")
-                self.red.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.red, "text": "Red"})
 
-            if data['SessionFlags'] & Flags.blue:
+            if self.data.flags & Flags.blue:
                 print("Blue flag")
-                self.blue.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.blue, "text": "Blue"})
 
-            if data['SessionFlags'] & Flags.debris:
+            if self.data.flags & Flags.debris:
                 print("Debris flag")
-                self.debris.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.debris, "text": "Debris"})
 
-            if data['SessionFlags'] & Flags.crossed:
+            if self.data.flags & Flags.crossed:
                 print("Crossed flags")
-                self.crossed.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.crossed, "text": "Crossed"})
 
-            if data['SessionFlags'] & Flags.yellow_waving:
+            if self.data.flags & Flags.yellow_waving:
                 print("Yellow waving flag")
-                self.yellow_waving.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.yellow_waving, "text": "Yellow"})
 
-            if data['SessionFlags'] & Flags.one_lap_to_green:
+            if self.data.flags & Flags.one_lap_to_green:
                 print("One lap to green")
-                self.one_lap_to_green.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.one_lap_to_green, "text": "1 to Green"})
 
-            if data['SessionFlags'] & Flags.green_held:
+            if self.data.flags & Flags.green_held:
                 print("Green flag held")
-                self.green_held.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.green_held, "text": "Green"})
 
-            if data['SessionFlags'] & Flags.ten_to_go:
+            if self.data.flags & Flags.ten_to_go:
                 print("Ten to go")
-                self.ten_to_go.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.ten_to_go, "text": "10 to go"})
 
-            if data['SessionFlags'] & Flags.five_to_go:
+            if self.data.flags & Flags.five_to_go:
                 print("Five to go")
-                self.five_to_go.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.five_to_go, "text": "5 to go"})
 
-            if data['SessionFlags'] & Flags.random_waving:
+            if self.data.flags & Flags.random_waving:
                 print("Random waving flag")
-                self.random_waving.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.random_waving, "text": "Random"})
 
-            if data['SessionFlags'] & Flags.caution:
+            if self.data.flags & Flags.caution:
                 print("Caution Flag")
-                self.cauting.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.caution, "text": "Caution"})
 
-            if data['SessionFlags'] & Flags.caution_waving:
+            if self.data.flags & Flags.caution_waving:
                 print("Caution waving Flag")
-                self.caution_waving.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.caution_waving, "text": "Caution"})
 
-            if data['SessionFlags'] & Flags.black:
+            if self.data.flags & Flags.black:
                 print("Black Flag")
-                self.black.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.black, "text": "Black"})
 
-            if data['SessionFlags'] & Flags.disqualify:
+            if self.data.flags & Flags.disqualify:
                 print("DQ Flag")
-                self.disqualify.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.disqualify, "text": "DQ"})
 
-            if data['SessionFlags'] & Flags.furled:
+            if self.data.flags & Flags.furled:
                 print("Furled black Flag")
-                self.furled.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.furled, "text": "Warning"})
 
-            if data['SessionFlags'] & Flags.repair:
+            if self.data.flags & Flags.repair:
                 print("Meatball Flag")
-                self.repair.setChecked(True)
                 update_required = True
                 json['model']['frames'].append({"icon": Icons.repair, "text": "Damage"})
           
-            self.last_flags = data['SessionFlags']
+            self.last_flags = self.data.flags
 
         if update_required:
             self.send_notification(json)

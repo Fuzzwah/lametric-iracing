@@ -6,301 +6,306 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>593</width>
-    <height>319</height>
+    <width>630</width>
+    <height>289</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>LaMetric iRacing Data Sender</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout" columnstretch="0,0">
-    <item row="1" column="0">
-     <widget class="QPushButton" name="pushButton">
-      <property name="text">
-       <string>Settings</string>
-      </property>
-     </widget>
-    </item>
+   <layout class="QGridLayout" name="gridLayout" columnstretch="0">
     <item row="0" column="0">
-     <layout class="QHBoxLayout" name="driverInfoBox">
+     <layout class="QHBoxLayout" name="leftBox">
       <item>
-       <layout class="QFormLayout" name="driverInfoForm">
-        <item row="0" column="0">
-         <widget class="QLabel" name="driverNameLabel">
-          <property name="text">
-           <string>Driver Name</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QLineEdit" name="driverNameLineEdit"/>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="custIDLabel">
-          <property name="text">
-           <string>CustID</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QLineEdit" name="custIDLineEdit"/>
-        </item>
-        <item row="2" column="0">
-         <widget class="QLabel" name="iRatingLabel">
-          <property name="text">
-           <string>iRating</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QLineEdit" name="iRatingLineEdit"/>
-        </item>
-        <item row="3" column="0">
-         <widget class="QLabel" name="licenseLabel">
-          <property name="text">
-           <string>License</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1">
-         <widget class="QLineEdit" name="licenseLineEdit"/>
-        </item>
-        <item row="4" column="0">
-         <widget class="QLabel" name="lastLapLabel">
-          <property name="text">
-           <string>Last Lap</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="QLineEdit" name="lastLapLineEdit"/>
-        </item>
-        <item row="5" column="0">
-         <widget class="QLabel" name="bestLapLabel">
-          <property name="text">
-           <string>Best Lap</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="1">
-         <widget class="QLineEdit" name="bestLapLineEdit"/>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </item>
-    <item row="0" column="1">
-     <layout class="QHBoxLayout" name="flagsBox">
-      <item>
-       <layout class="QHBoxLayout" name="flagsBoxRight">
+       <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
-         <layout class="QVBoxLayout" name="flagsBoxRightLayout">
+         <layout class="QHBoxLayout" name="horizontalLayout_Main">
           <item>
-           <widget class="QCheckBox" name="start_hidden">
-            <property name="text">
-             <string>Continuous green</string>
+           <layout class="QVBoxLayout" name="verticalLayout_LeftCheckBoxes">
+            <property name="spacing">
+             <number>15</number>
             </property>
-            <property name="checkable">
-             <bool>false</bool>
+            <property name="leftMargin">
+             <number>5</number>
             </property>
-           </widget>
+            <property name="topMargin">
+             <number>5</number>
+            </property>
+            <property name="rightMargin">
+             <number>5</number>
+            </property>
+            <property name="bottomMargin">
+             <number>5</number>
+            </property>
+            <item>
+             <widget class="QCheckBox" name="checkBox_Name">
+              <property name="text">
+               <string>Name</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_IRating">
+              <property name="text">
+               <string>iRating</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_License">
+              <property name="text">
+               <string>License</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_Position">
+              <property name="text">
+               <string>Position</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_Laps">
+              <property name="text">
+               <string>Laps</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_LapsLeft">
+              <property name="text">
+               <string>Laps Left</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
           <item>
-           <widget class="QCheckBox" name="checkered">
-            <property name="text">
-             <string>Checkered Flag</string>
+           <layout class="QVBoxLayout" name="verticalLayout_LeftFields">
+            <property name="leftMargin">
+             <number>5</number>
             </property>
-            <property name="checkable">
-             <bool>false</bool>
+            <property name="topMargin">
+             <number>5</number>
             </property>
-           </widget>
+            <property name="rightMargin">
+             <number>5</number>
+            </property>
+            <property name="bottomMargin">
+             <number>5</number>
+            </property>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_Name">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_IRating">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_License">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_Position">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_Laps">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_LapsLeft">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
           <item>
-           <widget class="QCheckBox" name="white">
-            <property name="text">
-             <string>White Flag</string>
+           <layout class="QVBoxLayout" name="verticalLayout_RightCheckBoxes">
+            <property name="spacing">
+             <number>15</number>
             </property>
-            <property name="checkable">
-             <bool>false</bool>
+            <property name="leftMargin">
+             <number>5</number>
             </property>
-           </widget>
+            <property name="topMargin">
+             <number>5</number>
+            </property>
+            <property name="rightMargin">
+             <number>5</number>
+            </property>
+            <property name="bottomMargin">
+             <number>5</number>
+            </property>
+            <item>
+             <widget class="QCheckBox" name="checkBox_LastLap">
+              <property name="text">
+               <string>Last Lap</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_BestLap">
+              <property name="text">
+               <string>Best Lap</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_FuelPerLap">
+              <property name="text">
+               <string>Fuel Per Lap</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_FuelLeft">
+              <property name="text">
+               <string>Fuel Left</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_TimeLeft">
+              <property name="text">
+               <string>Time Left</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_Flags">
+              <property name="text">
+               <string>Flags</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
           <item>
-           <widget class="QCheckBox" name="green">
-            <property name="text">
-             <string>Green flag</string>
+           <layout class="QVBoxLayout" name="verticalLayout_RightFields">
+            <property name="leftMargin">
+             <number>5</number>
             </property>
-            <property name="checkable">
-             <bool>false</bool>
+            <property name="topMargin">
+             <number>5</number>
             </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="yellow">
-            <property name="text">
-             <string>Yellow flag</string>
+            <property name="rightMargin">
+             <number>5</number>
             </property>
-            <property name="checkable">
-             <bool>false</bool>
+            <property name="bottomMargin">
+             <number>31</number>
             </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="red">
-            <property name="text">
-             <string>Red flag</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="blue">
-            <property name="text">
-             <string>Blue flag</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="debris">
-            <property name="text">
-             <string>Debris flag</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="crossed">
-            <property name="text">
-             <string>Crossed flags</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="yellow_waving">
-            <property name="text">
-             <string>Yellow waving flag</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
-            </property>
-           </widget>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_LastLap">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_BestLap">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_FuelPerLap">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_FuelLeft">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_TimeLeft">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
          </layout>
         </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="flagsBoxLeft">
         <item>
-         <layout class="QVBoxLayout" name="flagsBoxLeftLayout">
+         <layout class="QHBoxLayout" name="horizontalLayout_Buttons" stretch="0,0">
+          <property name="sizeConstraint">
+           <enum>QLayout::SetMaximumSize</enum>
+          </property>
           <item>
-           <widget class="QCheckBox" name="one_lap_to_green">
+           <widget class="QPushButton" name="settingsButton">
             <property name="text">
-             <string>One lap to green</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
+             <string>Settings</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QCheckBox" name="green_held">
+           <widget class="QPushButton" name="testButton">
             <property name="text">
-             <string>Green flag held</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="ten_to_go">
-            <property name="text">
-             <string>Ten to go</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="five_to_go">
-            <property name="text">
-             <string>Five to go</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="random_waving">
-            <property name="text">
-             <string>Random waving flag</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="caution">
-            <property name="text">
-             <string>Caution Flag</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="caution_waving">
-            <property name="text">
-             <string>Caution waving Flag</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="black">
-            <property name="text">
-             <string>Black Flag</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="disqualify">
-            <property name="text">
-             <string>DQ Flag</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="furled">
-            <property name="text">
-             <string>Furled black Flag</string>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
+             <string>Test Send</string>
             </property>
            </widget>
           </item>
