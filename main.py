@@ -131,7 +131,7 @@ class State(object):
     last_car_setup_tick: int = -1
     start_hidden_sent: bool = False
     sent_ratings: bool = False
-    flag_counter: int = 0
+    sent_flag: str = None
 
 
 class WorkerSignals(QObject):
@@ -348,6 +348,20 @@ class MainWindow(Window):
                 if len( json["model"]["frames"]) > 0:
                     self.send_notification(json, "ratings")
 
+    def send_flag(self, icon, event):
+        if self.state.sent_flag != event and self.checkBox_Flags.isChecked():
+            json = {
+                "priority": "warning",
+                "icon_type": "none",
+                "lifetime ": 1,
+                "model": {
+                    "cycles": 0,
+                    "frames": [{"icon": icon, "text": event}]
+                }
+            }
+            self.send_notification(json, f"flag: {event}")
+            self.state.sent_flag = event
+
     def process_data(self):
 
         if self.lineEdit_BestLap.text() != self.data.best_laptime:
@@ -373,108 +387,71 @@ class MainWindow(Window):
                 self.data.laps_left = "∞"
             self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")        
 
-        if self.sent_data.flags != self.data.flags and self.checkBox_Flags.isChecked():
-            json = {
-                "priority": "warning",
-                "icon_type": "none",
-                "lifetime ": 2,
-                "model": {
-                    "cycles": 0,
-                    "frames": []
-                }
-            }
+        if self.data.flags & Flags.start_hidden and not self.state.start_hidden_sent:
+            self.state.start_hidden_sent = True
+            self.send_flag(Icons.start_hidden, "Start")
 
-            if self.data.flags & Flags.start_hidden and not self.state.start_hidden_sent:
-                self.state.start_hidden_sent = True
-                event = "Race start"
-                json['model']['frames'].append({"icon": Icons.start_hidden, "text": "Start"})
+        if self.data.flags & Flags.checkered:
+            self.send_flag(Icons.checkered, "Finish")
 
-            if self.data.flags & Flags.checkered:
-                event = "Checkered Flag"
-                json['model']['frames'].append({"icon": Icons.checkered, "text": "Finish"})
+        if self.data.flags & Flags.white:
+            self.send_flag(Icons.white, "White")
 
-            if self.data.flags & Flags.white:
-                event = "White Flag"
-                json['model']['frames'].append({"icon": Icons.white, "text": "White"})
+        if self.data.flags & Flags.green:
+            self.send_flag(Icons.green, "Green")
 
-            if self.data.flags & Flags.green:
-                event = "Green flag"
-                json['model']['frames'].append({"icon": Icons.green, "text": "Green"})
+        if self.data.flags & Flags.yellow:
+            self.send_flag(Icons.yellow, "Yellow")
 
-            if self.data.flags & Flags.yellow:
-                event = "Yellow flag"
-                json['model']['frames'].append({"icon": Icons.yellow, "text": "Yellow"})
+        if self.data.flags & Flags.red:
+            self.send_flag(Icons.red, "Red")
 
-            if self.data.flags & Flags.red:
-                event = "Red flag"
-                json['model']['frames'].append({"icon": Icons.red, "text": "Red"})
+        if self.data.flags & Flags.blue:
+            self.send_flag(Icons.blue, "Blue")
 
-            if self.data.flags & Flags.blue:
-                event = "Blue flag"
-                json['model']['frames'].append({"icon": Icons.blue, "text": "Blue"})
+        if self.data.flags & Flags.debris:
+            self.send_flag(Icons.debris, "Debris")
 
-            if self.data.flags & Flags.debris:
-                event = "Debris flag"
-                json['model']['frames'].append({"icon": Icons.debris, "text": "Debris"})
+        if self.data.flags & Flags.crossed:
+            self.send_flag(Icons.crossed, "Crossed")
 
-            if self.data.flags & Flags.crossed:
-                event = "Crossed flags"
-                json['model']['frames'].append({"icon": Icons.crossed, "text": "Crossed"})
+        if self.data.flags & Flags.yellow_waving:
+            self.send_flag(Icons.yellow_waving, "Yellow")
 
-            if self.data.flags & Flags.yellow_waving:
-                event = "Yellow waving flag"
-                json['model']['frames'].append({"icon": Icons.yellow_waving, "text": "Yellow"})
+        if self.data.flags & Flags.one_lap_to_green:
+            self.send_flag(Icons.one_lap_to_green, "1toGreen")
 
-            if self.data.flags & Flags.one_lap_to_green:
-                event = "One lap to green"
-                json['model']['frames'].append({"icon": Icons.one_lap_to_green, "text": "1toGreen"})
+        if self.data.flags & Flags.green_held:
+            self.send_flag(Icons.green_held, "Green")
 
-            if self.data.flags & Flags.green_held:
-                event = "Green flag held"
-                json['model']['frames'].append({"icon": Icons.green_held, "text": "Green"})
+        if self.data.flags & Flags.ten_to_go:
+            self.send_flag(Icons.ten_to_go, "10 to go")
 
-            if self.data.flags & Flags.ten_to_go:
-                event = "Ten to go"
-                json['model']['frames'].append({"icon": Icons.ten_to_go, "text": "10 to go"})
+        if self.data.flags & Flags.five_to_go:
+            self.send_flag(Icons.five_to_go, "5 to go")
 
-            if self.data.flags & Flags.five_to_go:
-                event = "Five to go"
-                json['model']['frames'].append({"icon": Icons.five_to_go, "text": "5 to go"})
+        if self.data.flags & Flags.random_waving:
+            self.send_flag(Icons.random_waving, "Random")
 
-            if self.data.flags & Flags.random_waving:
-                event = "Random waving flag"
-                json['model']['frames'].append({"icon": Icons.random_waving, "text": "Random"})
+        if self.data.flags & Flags.caution:
+            self.send_flag(Icons.caution, "Caution")
 
-            if self.data.flags & Flags.caution:
-                event = "Caution Flag"
-                json['model']['frames'].append({"icon": Icons.caution, "text": "Caution"})
+        if self.data.flags & Flags.caution_waving:
+            self.send_flag(Icons.caution_waving, "Caution")
 
-            if self.data.flags & Flags.caution_waving:
-                event = "Caution waving Flag"
-                json['model']['frames'].append({"icon": Icons.caution_waving, "text": "Caution"})
+        if self.data.flags & Flags.black:
+            self.send_flag(Icons.black, "Black")
 
-            if self.data.flags & Flags.black:
-                event = "Black Flag"
-                json['model']['frames'].append({"icon": Icons.black, "text": "Black"})
+        if self.data.flags & Flags.disqualify:
+            self.send_flag(Icons.disqualify, "DQ")
 
-            if self.data.flags & Flags.disqualify:
-                event = "DQ Flag"
-                json['model']['frames'].append({"icon": Icons.disqualify, "text": "DQ"})
+        if self.data.flags & Flags.furled:
+            self.send_flag(Icons.furled, "Warning")
 
-            if self.data.flags & Flags.furled:
-                event = "Furled black Flag"
-                json['model']['frames'].append({"icon": Icons.furled, "text": "Warning"})
+        if self.data.flags & Flags.repair:
+            self.send_flag(Icons.repair, "Damage")
 
-            if self.data.flags & Flags.repair:
-                event = "Meatball Flag"
-                json['model']['frames'].append({"icon": Icons.repair, "text": "Damage"})
-          
-            if len( json["model"]["frames"]) > 0:
-                self.send_notification(json, event)
-                
-            self.sent_data.flags = self.data.flags
-
-        elif self.sent_data.best_laptime != self.data.best_laptime and self.checkBox_BestLap.isChecked():
+        if self.sent_data.best_laptime != self.data.best_laptime and self.checkBox_BestLap.isChecked():
             event = f"best_lap: {self.data.best_laptime}"
             self.lineEdit_BestLap.setText(self.data.best_laptime)
             json = {
@@ -488,7 +465,7 @@ class MainWindow(Window):
             self.sent_data.best_laptime = self.data.best_laptime
             self.send_notification(json, event)            
 
-        elif self.sent_data.position != self.data.position and self.checkBox_Position.isChecked():
+        if self.sent_data.position != self.data.position and self.checkBox_Position.isChecked():
             event = f"position: {ordinal(self.data.position)} / {self.data.cars_in_class}"
             self.lineEdit_Position.setText(f"{ordinal(self.data.position)} / {self.data.cars_in_class}")
             if self.sent_data.position:
@@ -510,7 +487,7 @@ class MainWindow(Window):
             self.sent_data.position = self.data.position
             self.send_notification(json, event)            
 
-        elif self.sent_data.laps != self.data.laps and self.checkBox_Laps.isChecked():
+        if self.sent_data.laps != self.data.laps and self.checkBox_Laps.isChecked():
             event = f"laps: {self.data.laps} / {self.data.laps_left}"
             self.lineEdit_Laps.setText(f"{self.data.laps}")
             if self.data.laps_left == 32767.0:
@@ -528,8 +505,7 @@ class MainWindow(Window):
             self.sent_data.laps = self.data.laps
             self.send_notification(json, event)
 
-        else:
-            self.sent_data.flags = self.data.flags
+        if not self.state.sent_ratings:
             self.send_ratings()
 
     def main_cycle(self):
