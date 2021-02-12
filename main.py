@@ -30,6 +30,7 @@ class Driver(object):
     """ a generic object to collect up the information about the driver
     """
 
+    caridx: int = None
     name: str = None
     irating: int = None
     license_string: str = None
@@ -45,8 +46,8 @@ class Data(object):
     position: int = None
     laps: int = None
     laps_left: int = None
-    last_laptime: float = None
-    best_laptime: float = None
+    last_laptime: str = None
+    best_laptime: str = None
     fuel_per_lap: float = None
     fuel_left: float = None
     time_left: float = None
@@ -110,8 +111,7 @@ class State(object):
     car_in_world: bool = False
     last_car_setup_tick: int = -1
     start_hidden_sent: bool = False
-    last_send: str = None
-    last_flags: int = None
+    sent_ratings: str = None
 
 
 class WorkerSignals(QObject):
@@ -227,7 +227,7 @@ class MainWindow(Window):
 
         self.ir = IRSDK()
         self.state = State()
-        self.previous_data = Data()
+        self.sent_data = Data()
         self.data = Data()
 
         self.threadpool = QThreadPool()
@@ -280,12 +280,21 @@ class MainWindow(Window):
         except KeyError:
             setattr(self.data, attr, None)
 
-
     def data_collection_cycle(self):
         self.ir.freeze_var_buffer_latest()
         self.update_data('position', self.ir['PlayerCarClassPosition'])
-        self.update_data('best_laptime', float(self.ir['LapBestLapTime']))
-        self.update_data('last_laptime', float(self.ir['LapLastLapTime']))
+        try:
+            minutes, seconds = divmod(float(self.ir['LapBestLapTime']), 60)
+            bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
+        except:
+            bestlaptime = ""
+        self.update_data('best_laptime', bestlaptime)
+        try:
+            minutes, seconds = divmod(float(self.ir['LapLastLapTime']), 60)
+            lastlaptime = f"{minutes:.0f}:{seconds:.3f}"
+        except:
+            lastlaptime = ""
+        self.update_data('last_laptime', lastlaptime)
         self.update_data('fuel_left', float(self.ir['FuelLevel']))
         self.update_data('laps', self.ir['LapCompleted'])
         self.update_data('laps_left', float(self.ir['SessionLapsRemainEx']))
@@ -293,10 +302,60 @@ class MainWindow(Window):
         self.update_data('flags', int(self.ir['SessionFlags']))
         self.ir.unfreeze_var_buffer_latest()
 
-    def process_data(self):
+    def send_ratings(self):
+        print("ratings")
+        json = {
+            "priority": "info",
+            "icon_type":"none",
+            "model": {
+                "cycles": 0,
+                "frames": []
+            }
+        }            
+        if self.checkBox_IRating.isChecked():
+            json["model"]["frames"].append({"icon": "i43085", "text": f"{self.driver.irating:,}"})
 
-        if self.last_flags != self.data.flags and self.checkBox_Flags.isChecked():
-            # if there's a flag, it should over ride anything else that is trying to be displayed... so we empty the json
+        if self.checkBox_License.isChecked():
+            icon = Icons.ir
+            if self.driver.license_letter == 'R':
+                icon = Icons.license_letter_r
+            elif self.driver.license_letter == 'D':
+                icon = Icons.license_letter_d
+            elif self.driver.license_letter == 'C':
+                icon = Icons.license_letter_c
+            elif self.driver.license_letter == 'B':
+                icon = Icons.license_letter_b
+            elif self.driver.license_letter == 'A':
+                icon = Icons.license_letter_a
+            elif self.driver.license_letter == 'P':
+                icon = Icons.license_letter_p
+
+            json["model"]["frames"].append({"icon": icon, "text": f"{self.driver.safety_rating}"})
+            if len( json["model"]["frames"]) > 0:
+                self.state.sent_ratings = True
+                self.send_notification(json)
+
+    def process_data(self):
+        pprint(self.data)
+
+        if self.lineEdit_BestLap.text() != self.data.best_laptime:
+            self.lineEdit_BestLap.setText(self.data.best_laptime)
+
+        if self.lineEdit_Position.text() != f"{self.data.position}":
+            self.lineEdit_Position.setText(f"{self.data.position}")
+            
+        if self.lineEdit_LastLap.text() != self.data.last_laptime:
+            self.lineEdit_LastLap.setText(self.data.last_laptime)
+
+        if self.lineEdit_Laps.text() != f"{self.data.laps}":
+            self.lineEdit_Laps.setText(f"{self.data.laps}")
+
+        if self.lineEdit_LapsLeft.text() != f"{self.data.laps_left}":
+            if self.data.laps_left == 32767.0:
+                self.data.laps_left = "∞"
+            self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")        
+
+        if self.checkBox_Flags.isChecked():
             json = {
                 "priority": "warning",
                 "icon_type":"none",
@@ -391,93 +450,57 @@ class MainWindow(Window):
                 print("Meatball Flag")
                 json['model']['frames'].append({"icon": Icons.repair, "text": "Damage"})
           
-            self.last_flags = self.data.flags
-
             if len( json["model"]["frames"]) > 0:
-                self.state.last_send = "flags"
+                self.sent_data.flags = self.data.flags
                 self.send_notification(json)
 
-        elif self.previous_data.best_laptime != self.data.best_laptime and self.state.last_send != "best_lap":
-            print(f"best_lap: {self.data.best_laptime}")
-            self.lineEdit_BestLap.setText(f"{self.data.best_laptime}")
-            json = {
-                "priority": "info",
-                "icon_type":"none",
-                "model": {
-                    "cycles": 1,
-                    "frames": [{"icon": Icons.purple, "text": f"{self.data.best_laptime}"}]
+            elif self.sent_data.best_laptime != self.data.best_laptime and self.checkBox_BestLap.isChecked():
+                print(f"best_lap: {self.data.best_laptime}")
+                self.lineEdit_BestLap.setText(self.data.best_laptime)
+                json = {
+                    "priority": "warning",
+                    "icon_type":"none",
+                    "model": {
+                        "cycles": 1,
+                        "frames": [{"icon": Icons.purple, "text": self.data.best_laptime}]
+                    }
                 }
-            }
-            self.state.last_send = "best_lap"
-            self.send_notification(json)            
+                self.sent_data.best_laptime = self.data.best_laptime
+                self.send_notification(json)            
 
-        elif self.previous_data.position != self.data.position and self.state.last_send != "position":
-            print(f"position: {self.data.position}")
-            self.lineEdit_Position.setText(f"{self.data.position}")
-            json = {
-                "priority": "info",
-                "icon_type":"none",
-                "model": {
-                    "cycles": 1,
-                    "frames": [{"icon": Icons.position, "text": f"{self.data.position}"}]
+            elif self.sent_data.position != self.data.position and self.checkBox_Position.isChecked():
+                print(f"position: {self.data.position}")
+                self.lineEdit_Position.setText(f"{self.data.position}")
+                json = {
+                    "priority": "warning",
+                    "icon_type":"none",
+                    "model": {
+                        "cycles": 1,
+                        "frames": [{"icon": Icons.position, "text": f"{self.data.position}"}]
+                    }
                 }
-            }
-            self.state.last_send = "position"
-            self.send_notification(json)            
+                self.sent_data.position = self.data.position
+                self.send_notification(json)            
 
-        elif self.previous_data.position != self.data.position and self.state.last_send != "laps":
-            print(f"laps: {self.data.laps} / {self.data.laps_left}")
-            self.lineEdit_Laps.setText(f"{self.data.laps}")
-            self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")
-            json = {
-                "priority": "info",
-                "icon_type":"none",
-                "model": {
-                    "cycles": 1,
-                    "frames": [{"icon": Icons.laps, "text": f"{self.data.laps} / {self.data.laps_left}"}]
+            elif self.sent_data.laps != self.data.laps and self.checkBox_Laps.isChecked():
+                print(f"laps: {self.data.laps} / {self.data.laps_left}")
+                self.lineEdit_Laps.setText(f"{self.data.laps}")
+                if self.data.laps_left == 32767.0:
+                    self.data.laps_left = "∞"
+                self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")
+                json = {
+                    "priority": "warning",
+                    "icon_type":"none",
+                    "model": {
+                        "cycles": 1,
+                        "frames": [{"icon": Icons.laps, "text": f"{self.data.laps} / {self.data.laps_left}"}]
+                    }
                 }
-            }
-            self.state.last_send = "laps"
-            self.send_notification(json)            
+                self.sent_data.laps = self.data.laps
+                self.send_notification(json)
 
-
-        elif self.state.last_send != "ratings":
-            print("ratings")
-            json = {
-                "priority": "info",
-                "icon_type":"none",
-                "model": {
-                    "cycles": 0,
-                    "frames": []
-                }
-            }            
-            if self.checkBox_IRating.isChecked():
-                json["model"]["frames"].append({"icon": "i43085", "text": f"{self.driver.irating:,}"})
-
-            if self.checkBox_License.isChecked():
-                icon = Icons.ir
-                if self.driver.license_letter == 'R':
-                    icon = Icons.license_letter_r
-                elif self.driver.license_letter == 'D':
-                    icon = Icons.license_letter_d
-                elif self.driver.license_letter == 'C':
-                    icon = Icons.license_letter_c
-                elif self.driver.license_letter == 'B':
-                    icon = Icons.license_letter_b
-                elif self.driver.license_letter == 'A':
-                    icon = Icons.license_letter_a
-                elif self.driver.license_letter == 'P':
-                    icon = Icons.license_letter_p
-
-                json["model"]["frames"].append({"icon": icon, "text": f"{self.driver.safety_rating}"})
-                if len( json["model"]["frames"]) > 0:
-                    self.state.last_send = "ratings"
-                    self.send_notification(json)            
-
-        if self.previous_data.last_laptime != f"{self.data.last_laptime}":
-            self.lineEdit_LastLap.setText(f"{self.data.last_laptime}")
-
-        self.previous_data = self.data
+            else:
+                self.send_ratings()
 
     def main_cycle(self):
         main_cycle_worker = Worker(self.data_collection_cycle)
@@ -498,12 +521,15 @@ class MainWindow(Window):
 
         for dvr in self.ir['DriverInfo']['Drivers']:
             if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
+                self.driver.caridx = dvr['CarIdx']
                 self.driver.name = dvr['UserName']
                 self.driver.irating = int(dvr['IRating'])
                 self.driver.license_string = dvr['LicString']
                 license_letter, safety_rating = dvr['LicString'].split(' ')
                 self.driver.license_letter = license_letter
                 self.driver.safety_rating = float(safety_rating)
+
+                self.send_ratings()
 
                 self.lineEdit_Name.setText(self.driver.name)
                 self.lineEdit_IRating.setText(f"{self.driver.irating:,}")
