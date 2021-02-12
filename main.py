@@ -114,9 +114,9 @@ class Icons(object):
     license_letter_p: str = 'i43596'
 
     # purple for fastest lap
-    purple: str = 'i43599'
+    purple: str = '43599'
 
-    laps: str = 'i43645'
+    laps: str = '43645'
     green_arrow_up: str = 'a43651'
     red_arrow_down: str = 'a43652'    
 
@@ -130,7 +130,8 @@ class State(object):
     car_in_world: bool = False
     last_car_setup_tick: int = -1
     start_hidden_sent: bool = False
-    sent_ratings: str = None
+    sent_ratings: bool = False
+    flag_counter: int = 0
 
 
 class WorkerSignals(QObject):
@@ -228,9 +229,6 @@ class MainWindow(Window):
         self.register_widget(self.lineEdit_Name)
         self.register_widget(self.lineEdit_IRating)
         self.register_widget(self.lineEdit_License)
-        self.register_widget(self.lineEdit_Position)
-        self.register_widget(self.lineEdit_Laps)
-        self.register_widget(self.lineEdit_LapsLeft)
 
         self.register_widget(self.checkBox_LastLap, default=True)
         self.register_widget(self.checkBox_BestLap, default=True)
@@ -238,11 +236,6 @@ class MainWindow(Window):
         self.register_widget(self.checkBox_FuelLeft, default=True)
         self.register_widget(self.checkBox_TimeLeft, default=True)
         self.register_widget(self.checkBox_Flags, default=True)
-        self.register_widget(self.lineEdit_LastLap)
-        self.register_widget(self.lineEdit_BestLap)
-        self.register_widget(self.lineEdit_FuelPerLap)
-        self.register_widget(self.lineEdit_FuelLeft)
-        self.register_widget(self.lineEdit_TimeLeft)
 
         self.ir = IRSDK()
         self.state = State()
@@ -252,11 +245,11 @@ class MainWindow(Window):
         self.threadpool = QThreadPool()
 
         self.timerConnectionMonitor = QTimer()
-        self.timerConnectionMonitor.setInterval(5000)
+        self.timerConnectionMonitor.setInterval(10000)
         self.timerConnectionMonitor.timeout.connect(self.irsdkConnectionMonitor)
 
         self.timerMainCycle = QTimer()
-        self.timerMainCycle.setInterval(10000)
+        self.timerMainCycle.setInterval(500)
         self.timerMainCycle.timeout.connect(self.main_cycle)
 
         if self.irsdk_connection_check():
@@ -324,40 +317,38 @@ class MainWindow(Window):
         self.ir.unfreeze_var_buffer_latest()
 
     def send_ratings(self):
-        print("ratings")
-        json = {
-            "priority": "info",
-            "icon_type":"none",
-            "model": {
-                "cycles": 0,
-                "frames": []
-            }
-        }            
-        if self.checkBox_IRating.isChecked():
-            json["model"]["frames"].append({"icon": "i43085", "text": f"{self.driver.irating:,}"})
+        if not self.state.sent_ratings:
+            json = {
+                "priority": "info",
+                "icon_type":"none",
+                "model": {
+                    "cycles": 0,
+                    "frames": []
+                }
+            }            
+            if self.checkBox_IRating.isChecked():
+                json["model"]["frames"].append({"icon": "i43085", "text": f"{self.driver.irating:,}"})
 
-        if self.checkBox_License.isChecked():
-            icon = Icons.ir
-            if self.driver.license_letter == 'R':
-                icon = Icons.license_letter_r
-            elif self.driver.license_letter == 'D':
-                icon = Icons.license_letter_d
-            elif self.driver.license_letter == 'C':
-                icon = Icons.license_letter_c
-            elif self.driver.license_letter == 'B':
-                icon = Icons.license_letter_b
-            elif self.driver.license_letter == 'A':
-                icon = Icons.license_letter_a
-            elif self.driver.license_letter == 'P':
-                icon = Icons.license_letter_p
+            if not self.state.sent_ratings and self.checkBox_License.isChecked():
+                icon = Icons.ir
+                if self.driver.license_letter == 'R':
+                    icon = Icons.license_letter_r
+                elif self.driver.license_letter == 'D':
+                    icon = Icons.license_letter_d
+                elif self.driver.license_letter == 'C':
+                    icon = Icons.license_letter_c
+                elif self.driver.license_letter == 'B':
+                    icon = Icons.license_letter_b
+                elif self.driver.license_letter == 'A':
+                    icon = Icons.license_letter_a
+                elif self.driver.license_letter == 'P':
+                    icon = Icons.license_letter_p
 
-            json["model"]["frames"].append({"icon": icon, "text": f"{self.driver.safety_rating}"})
-            if len( json["model"]["frames"]) > 0:
-                self.state.sent_ratings = True
-                self.send_notification(json)
+                json["model"]["frames"].append({"icon": icon, "text": f"{self.driver.safety_rating}"})
+                if len( json["model"]["frames"]) > 0:
+                    self.send_notification(json, "ratings")
 
     def process_data(self):
-        pprint(self.data)
 
         if self.lineEdit_BestLap.text() != self.data.best_laptime:
             self.lineEdit_BestLap.setText(self.data.best_laptime)
@@ -374,167 +365,172 @@ class MainWindow(Window):
         if self.lineEdit_TimeLeft.text() != f"{self.data.time_left}":
             self.lineEdit_TimeLeft.setText(f"{self.data.time_left}")
 
-        if self.lineEdit_FuelLeft.text() != f"{self.data.fuel_left}":
-            self.lineEdit_FuelLeft.setText(f"{self.data.fuel_left}")
+        if self.lineEdit_FuelLeft.text() != f"{self.data.fuel_left:.2f} L":
+            self.lineEdit_FuelLeft.setText(f"{self.data.fuel_left:.2f} L")
 
         if self.lineEdit_LapsLeft.text() != f"{self.data.laps_left}":
             if self.data.laps_left == 32767.0:
                 self.data.laps_left = "∞"
             self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")        
 
-        if self.checkBox_Flags.isChecked():
+        if self.sent_data.flags != self.data.flags and self.checkBox_Flags.isChecked():
             json = {
                 "priority": "warning",
-                "icon_type":"none",
+                "icon_type": "none",
+                "lifetime ": 2,
                 "model": {
-                    "cycles": 2,
+                    "cycles": 0,
                     "frames": []
                 }
             }
 
             if self.data.flags & Flags.start_hidden and not self.state.start_hidden_sent:
                 self.state.start_hidden_sent = True
-                print("Race start")
+                event = "Race start"
                 json['model']['frames'].append({"icon": Icons.start_hidden, "text": "Start"})
 
             if self.data.flags & Flags.checkered:
-                print("Checkered Flag")
+                event = "Checkered Flag"
                 json['model']['frames'].append({"icon": Icons.checkered, "text": "Finish"})
 
             if self.data.flags & Flags.white:
-                print("White Flag")
+                event = "White Flag"
                 json['model']['frames'].append({"icon": Icons.white, "text": "White"})
 
             if self.data.flags & Flags.green:
-                print("Green flag")
+                event = "Green flag"
                 json['model']['frames'].append({"icon": Icons.green, "text": "Green"})
 
             if self.data.flags & Flags.yellow:
-                print("Yellow flag")
+                event = "Yellow flag"
                 json['model']['frames'].append({"icon": Icons.yellow, "text": "Yellow"})
 
             if self.data.flags & Flags.red:
-                print("Red flag")
+                event = "Red flag"
                 json['model']['frames'].append({"icon": Icons.red, "text": "Red"})
 
             if self.data.flags & Flags.blue:
-                print("Blue flag")
+                event = "Blue flag"
                 json['model']['frames'].append({"icon": Icons.blue, "text": "Blue"})
 
             if self.data.flags & Flags.debris:
-                print("Debris flag")
+                event = "Debris flag"
                 json['model']['frames'].append({"icon": Icons.debris, "text": "Debris"})
 
             if self.data.flags & Flags.crossed:
-                print("Crossed flags")
+                event = "Crossed flags"
                 json['model']['frames'].append({"icon": Icons.crossed, "text": "Crossed"})
 
             if self.data.flags & Flags.yellow_waving:
-                print("Yellow waving flag")
+                event = "Yellow waving flag"
                 json['model']['frames'].append({"icon": Icons.yellow_waving, "text": "Yellow"})
 
             if self.data.flags & Flags.one_lap_to_green:
-                print("One lap to green")
+                event = "One lap to green"
                 json['model']['frames'].append({"icon": Icons.one_lap_to_green, "text": "1toGreen"})
 
             if self.data.flags & Flags.green_held:
-                print("Green flag held")
+                event = "Green flag held"
                 json['model']['frames'].append({"icon": Icons.green_held, "text": "Green"})
 
             if self.data.flags & Flags.ten_to_go:
-                print("Ten to go")
+                event = "Ten to go"
                 json['model']['frames'].append({"icon": Icons.ten_to_go, "text": "10 to go"})
 
             if self.data.flags & Flags.five_to_go:
-                print("Five to go")
+                event = "Five to go"
                 json['model']['frames'].append({"icon": Icons.five_to_go, "text": "5 to go"})
 
             if self.data.flags & Flags.random_waving:
-                print("Random waving flag")
+                event = "Random waving flag"
                 json['model']['frames'].append({"icon": Icons.random_waving, "text": "Random"})
 
             if self.data.flags & Flags.caution:
-                print("Caution Flag")
+                event = "Caution Flag"
                 json['model']['frames'].append({"icon": Icons.caution, "text": "Caution"})
 
             if self.data.flags & Flags.caution_waving:
-                print("Caution waving Flag")
+                event = "Caution waving Flag"
                 json['model']['frames'].append({"icon": Icons.caution_waving, "text": "Caution"})
 
             if self.data.flags & Flags.black:
-                print("Black Flag")
+                event = "Black Flag"
                 json['model']['frames'].append({"icon": Icons.black, "text": "Black"})
 
             if self.data.flags & Flags.disqualify:
-                print("DQ Flag")
+                event = "DQ Flag"
                 json['model']['frames'].append({"icon": Icons.disqualify, "text": "DQ"})
 
             if self.data.flags & Flags.furled:
-                print("Furled black Flag")
+                event = "Furled black Flag"
                 json['model']['frames'].append({"icon": Icons.furled, "text": "Warning"})
 
             if self.data.flags & Flags.repair:
-                print("Meatball Flag")
+                event = "Meatball Flag"
                 json['model']['frames'].append({"icon": Icons.repair, "text": "Damage"})
           
             if len( json["model"]["frames"]) > 0:
-                self.sent_data.flags = self.data.flags
-                self.send_notification(json)
+                self.send_notification(json, event)
+                
+            self.sent_data.flags = self.data.flags
 
-            elif self.sent_data.best_laptime != self.data.best_laptime and self.checkBox_BestLap.isChecked():
-                print(f"best_lap: {self.data.best_laptime}")
-                self.lineEdit_BestLap.setText(self.data.best_laptime)
-                json = {
-                    "priority": "warning",
-                    "icon_type":"none",
-                    "model": {
-                        "cycles": 1,
-                        "frames": [{"icon": Icons.purple, "text": self.data.best_laptime}]
-                    }
+        elif self.sent_data.best_laptime != self.data.best_laptime and self.checkBox_BestLap.isChecked():
+            event = f"best_lap: {self.data.best_laptime}"
+            self.lineEdit_BestLap.setText(self.data.best_laptime)
+            json = {
+                "priority": "warning",
+                "icon_type":"none",
+                "model": {
+                    "cycles": 1,
+                    "frames": [{"icon": Icons.purple, "text": self.data.best_laptime}]
                 }
-                self.sent_data.best_laptime = self.data.best_laptime
-                self.send_notification(json)            
+            }
+            self.sent_data.best_laptime = self.data.best_laptime
+            self.send_notification(json, event)            
 
-            elif self.sent_data.position != self.data.position and self.checkBox_Position.isChecked():
-                print(f"position: {ordinal(self.data.position)} / {self.data.cars_in_class}")
-                self.lineEdit_Position.setText(f"{ordinal(self.data.position)} / {self.data.cars_in_class}")
-                if self.sent_data.position:
-                    if self.sent_data.position > self.data.position:
-                        icon = Icons.green_arrow_up
-                    else:
-                        icon = Icons.red_arrow_down
-                else:
+        elif self.sent_data.position != self.data.position and self.checkBox_Position.isChecked():
+            event = f"position: {ordinal(self.data.position)} / {self.data.cars_in_class}"
+            self.lineEdit_Position.setText(f"{ordinal(self.data.position)} / {self.data.cars_in_class}")
+            if self.sent_data.position:
+                if self.sent_data.position > self.data.position:
                     icon = Icons.green_arrow_up
-                json = {
-                    "priority": "warning",
-                    "icon_type":"none",
-                    "model": {
-                        "cycles": 1,
-                        "frames": [{"icon": icon, "text": f"{ordinal(self.data.position)}/{self.data.cars_in_class}"}]
-                    }
-                }
-                self.sent_data.position = self.data.position
-                self.send_notification(json)            
-
-            elif self.sent_data.laps != self.data.laps and self.checkBox_Laps.isChecked():
-                print(f"laps: {self.data.laps} / {self.data.laps_left}")
-                self.lineEdit_Laps.setText(f"{self.data.laps}")
-                if self.data.laps_left == 32767.0:
-                    self.data.laps_left = "∞"
-                self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")
-                json = {
-                    "priority": "warning",
-                    "icon_type":"none",
-                    "model": {
-                        "cycles": 1,
-                        "frames": [{"icon": Icons.laps, "text": f"{self.data.laps} / {self.data.laps_left}"}]
-                    }
-                }
-                self.sent_data.laps = self.data.laps
-                self.send_notification(json)
-
+                else:
+                    icon = Icons.red_arrow_down
             else:
-                self.send_ratings()
+                icon = Icons.green_arrow_up
+            json = {
+                "priority": "warning",
+                "icon_type":"none",
+                "lifetime ": 2,
+                "model": {
+                    "cycles": 1,
+                    "frames": [{"icon": icon, "text": f"{ordinal(self.data.position)}/{self.data.cars_in_class}"}]
+                }
+            }
+            self.sent_data.position = self.data.position
+            self.send_notification(json, event)            
+
+        elif self.sent_data.laps != self.data.laps and self.checkBox_Laps.isChecked():
+            event = f"laps: {self.data.laps} / {self.data.laps_left}"
+            self.lineEdit_Laps.setText(f"{self.data.laps}")
+            if self.data.laps_left == 32767.0:
+                self.data.laps_left = "∞"
+            self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")
+            json = {
+                "priority": "warning",
+                "icon_type":"none",
+                "lifetime ": 2,
+                "model": {
+                    "cycles": 1,
+                    "frames": [{"icon": Icons.laps, "text": f"{self.data.laps} / {self.data.laps_left}"}]
+                }
+            }
+            self.sent_data.laps = self.data.laps
+            self.send_notification(json, event)
+
+        else:
+            self.sent_data.flags = self.data.flags
+            self.send_ratings()
 
     def main_cycle(self):
         main_cycle_worker = Worker(self.data_collection_cycle)
@@ -582,8 +578,7 @@ class MainWindow(Window):
         self.timerMainCycle.stop()
         self.timerConnectionMonitor.start()
 
-    def send_notification(self, json):
-        pprint(json)
+    def send_notification(self, json, event):
         s = QSettings()
 
         try:
@@ -599,26 +594,33 @@ class MainWindow(Window):
             lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
             headers = {"Content-Type": "application/json; charset=utf-8"}
             basicAuthCredentials = ("dev", self.lametric_api_key)
-            try:
-                response = requests.post(
-                    lametric_url,
-                    headers=headers,
-                    auth=basicAuthCredentials,
-                    json=json,
-                    timeout=1,
-                )
-            except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
-                print("Failed to send data to LaMetric device: ", err)
-            except requests.exceptions.RequestException as err:
-                print("Oops: Something Else: ", err)
-            except requests.exceptions.ConnectionRefusedError as err:
-                print("Connection Refused: ", err)
-            except requests.exceptions.HTTPError as errh:
-                print("Http Error: ", errh)
-            except requests.exceptions.ConnectionError as errc:
-                print("Error Connecting: ", errc)
-            except requests.exceptions.Timeout as errt:
-                print("Timeout: ", errt)
+            if not event == "ratings" or not self.state.sent_ratings:
+                print(event)
+                try:
+                    response = requests.post(
+                        lametric_url,
+                        headers=headers,
+                        auth=basicAuthCredentials,
+                        json=json,
+                        timeout=1,
+                    )
+                except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
+                    print("Failed to send data to LaMetric device: ", err)
+                except requests.exceptions.RequestException as err:
+                    print("Oops: Something Else: ", err)
+                except requests.exceptions.ConnectionRefusedError as err:
+                    print("Connection Refused: ", err)
+                except requests.exceptions.HTTPError as errh:
+                    print("Http Error: ", errh)
+                except requests.exceptions.ConnectionError as errc:
+                    print("Error Connecting: ", errc)
+                except requests.exceptions.Timeout as errt:
+                    print("Timeout: ", errt)
+                finally:
+                    if event == "ratings":
+                        self.state.sent_ratings = True
+                    else:
+                        self.state.sent_ratings = False
 
     def show_settings(self):
         self.open_dialog()
@@ -660,7 +662,7 @@ class MainWindow(Window):
         json['model']['frames'].append({"icon": Icons.furled, "text": "Warn"})
         json['model']['frames'].append({"icon": Icons.debris, "text": "Debris"})
     
-        self.send_notification(json)
+        self.send_notification(json, "test")
 
     def closeEvent(self, e):
         super().closeEvent(e)
