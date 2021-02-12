@@ -4,8 +4,10 @@
 import sys
 from pprint import pprint
 from dataclasses import dataclass, field
+from datetime import timedelta
 import traceback
 import requests
+from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
 from typing import Optional
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import (
@@ -23,6 +25,22 @@ from pyirsdk import (
     IRSDK,
     Flags
 )
+
+def ordinal(num):
+    """
+    Take number and return the ordinal st, nd, th.
+    :num: int
+    :return: str
+    """
+    num_str = str(num)
+
+    SUFFIXES = {1: 'st', 2: 'nd', 3: 'rd'}
+    # Check for 11-14 because those are abnormal
+    if int(num_str[-2:]) > 10 and int(num_str[-2:]) < 14:
+        return "{:,}th".format(num)
+    else:
+        suffix = SUFFIXES.get(int(num_str[-1:]), 'th')
+    return "{:,}{}".format(num, suffix)
 
 
 @dataclass
@@ -44,6 +62,7 @@ class Data(object):
     """
 
     position: int = None
+    cars_in_class: int = None
     laps: int = None
     laps_left: int = None
     last_laptime: str = None
@@ -97,9 +116,9 @@ class Icons(object):
     # purple for fastest lap
     purple: str = 'i43599'
 
-    position: str = 'i43642'
     laps: str = 'i43645'
-    
+    green_arrow_up: str = ''
+    red_arrow_down: str = ''    
 
 
 @dataclass
@@ -252,9 +271,6 @@ class MainWindow(Window):
     # here we check if we are connected to iracing
     # so we can retrieve some data
     def irsdk_connection_check(self):
-        print(f"self.state.ir_connected: {self.state.ir_connected}")
-        print(f"self.ir.is_initialized: {self.ir.is_initialized}")
-        print(f"self.ir.is_connected: {self.ir.is_connected}")
         if self.state.ir_connected and not (self.ir.is_initialized and self.ir.is_connected):
             return False
         elif not self.state.ir_connected and self.ir.startup(silent=True) and self.ir.is_initialized and self.ir.is_connected:
@@ -282,7 +298,8 @@ class MainWindow(Window):
 
     def data_collection_cycle(self):
         self.ir.freeze_var_buffer_latest()
-        self.update_data('position', self.ir['PlayerCarClassPosition'])
+        self.update_data('position', int(self.ir['PlayerCarClassPosition']))
+        self.update_data('cars_in_class', int(len(self.ir['CarIdxClassPosition'])))
         try:
             minutes, seconds = divmod(float(self.ir['LapBestLapTime']), 60)
             bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
@@ -294,11 +311,15 @@ class MainWindow(Window):
             lastlaptime = f"{minutes:.0f}:{seconds:.3f}"
         except:
             lastlaptime = ""
+        try:
+            time_left = timedelta(seconds=int(self.ir['SessionTimeRemain']))
+        except:
+            time_left = ""
         self.update_data('last_laptime', lastlaptime)
-        self.update_data('fuel_left', float(self.ir['FuelLevel']))
+        self.update_data('fuel_left', self.ir['FuelLevel'])
         self.update_data('laps', self.ir['LapCompleted'])
         self.update_data('laps_left', float(self.ir['SessionLapsRemainEx']))
-        self.update_data('time_left', float(self.ir['SessionTimeRemain']))
+        self.update_data('time_left', str(time_left))
         self.update_data('flags', int(self.ir['SessionFlags']))
         self.ir.unfreeze_var_buffer_latest()
 
@@ -341,14 +362,20 @@ class MainWindow(Window):
         if self.lineEdit_BestLap.text() != self.data.best_laptime:
             self.lineEdit_BestLap.setText(self.data.best_laptime)
 
-        if self.lineEdit_Position.text() != f"{self.data.position}":
-            self.lineEdit_Position.setText(f"{self.data.position}")
+        if self.lineEdit_Position.text() != f"{ordinal(self.data.position)} / {self.data.cars_in_class}":
+            self.lineEdit_Position.setText(f"{ordinal(self.data.position)} / {self.data.cars_in_class}")
             
         if self.lineEdit_LastLap.text() != self.data.last_laptime:
             self.lineEdit_LastLap.setText(self.data.last_laptime)
 
         if self.lineEdit_Laps.text() != f"{self.data.laps}":
             self.lineEdit_Laps.setText(f"{self.data.laps}")
+
+        if self.lineEdit_TimeLeft.text() != f"{self.data.time_left}":
+            self.lineEdit_TimeLeft.setText(f"{self.data.time_left}")
+
+        if self.lineEdit_FuelLeft.text() != f"{self.data.fuel_left}":
+            self.lineEdit_FuelLeft.setText(f"{self.data.fuel_left}")
 
         if self.lineEdit_LapsLeft.text() != f"{self.data.laps_left}":
             if self.data.laps_left == 32767.0:
@@ -469,14 +496,21 @@ class MainWindow(Window):
                 self.send_notification(json)            
 
             elif self.sent_data.position != self.data.position and self.checkBox_Position.isChecked():
-                print(f"position: {self.data.position}")
-                self.lineEdit_Position.setText(f"{self.data.position}")
+                print(f"position: {ordinal(self.data.position)} / {self.data.cars_in_class}")
+                self.lineEdit_Position.setText(f"{ordinal(self.data.position)} / {self.data.cars_in_class}")
+                if self.sent_data.position:
+                    if self.sent_data.position > self.data.position:
+                        icon = Icons.green_arrow_up
+                    else:
+                        icon = Icons.red_arrow_down
+                else:
+                    icon = Icons.green_arrow_up
                 json = {
                     "priority": "warning",
                     "icon_type":"none",
                     "model": {
                         "cycles": 1,
-                        "frames": [{"icon": Icons.position, "text": f"{self.data.position}"}]
+                        "frames": [{"icon": icon, "text": f"{ordinal(self.data.position)} / {self.data.cars_in_class}"}]
                     }
                 }
                 self.sent_data.position = self.data.position
@@ -573,6 +607,8 @@ class MainWindow(Window):
                     json=json,
                     timeout=1,
                 )
+            except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
+                print("Failed to send data to LaMetric device: ", err)
             except requests.exceptions.RequestException as err:
                 print("Oops: Something Else: ", err)
             except requests.exceptions.ConnectionRefusedError as err:
