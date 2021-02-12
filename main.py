@@ -117,8 +117,8 @@ class Icons(object):
     purple: str = 'i43599'
 
     laps: str = 'i43645'
-    green_arrow_up: str = ''
-    red_arrow_down: str = ''    
+    green_arrow_up: str = 'a43651'
+    red_arrow_down: str = 'a43652'    
 
 
 @dataclass
@@ -510,7 +510,7 @@ class MainWindow(Window):
                     "icon_type":"none",
                     "model": {
                         "cycles": 1,
-                        "frames": [{"icon": icon, "text": f"{ordinal(self.data.position)} / {self.data.cars_in_class}"}]
+                        "frames": [{"icon": icon, "text": f"{ordinal(self.data.position)}/{self.data.cars_in_class}"}]
                     }
                 }
                 self.sent_data.position = self.data.position
