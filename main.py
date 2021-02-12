@@ -97,7 +97,7 @@ class Icons(object):
     purple: str = 'i43599'
 
     position: str = 'i43642'
-    lap: str = 'i43645'
+    laps: str = 'i43645'
     
 
 
@@ -422,7 +422,22 @@ class MainWindow(Window):
                     "frames": [{"icon": Icons.position, "text": f"{self.data.position}"}]
                 }
             }
-            self.state.last_send = "best_lap"
+            self.state.last_send = "position"
+            self.send_notification(json)            
+
+        elif self.previous_data.position != self.data.position and self.state.last_send != "laps":
+            print(f"laps: {self.data.laps} / {self.data.laps_left}")
+            self.lineEdit_Laps.setText(f"{self.data.laps}")
+            self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")
+            json = {
+                "priority": "info",
+                "icon_type":"none",
+                "model": {
+                    "cycles": 1,
+                    "frames": [{"icon": Icons.laps, "text": f"{self.data.laps} / {self.data.laps_left}"}]
+                }
+            }
+            self.state.last_send = "laps"
             self.send_notification(json)            
 
 
