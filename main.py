@@ -242,8 +242,8 @@ class MainWindow(Window):
 
         if self.irsdk_connection_check():
             self.irsdk_connection_controller(True)
-        else:
-            self.timerConnectionMonitor.start()
+        
+        self.timerConnectionMonitor.start()
 
         s = QSettings()
         #s.clear()
