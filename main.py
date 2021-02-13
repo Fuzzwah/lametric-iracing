@@ -620,7 +620,7 @@ class MainWindow(Window):
     @pyqtSlot()
     def on_testButton_clicked(self):
         count = 0
-        position = 20
+        position = 10
         bestlap = 1000
         self.driver = Driver()
 
@@ -632,8 +632,8 @@ class MainWindow(Window):
         self.driver.license_letter = license_letter
         self.driver.safety_rating = float(safety_rating)
 
-        while count < 40:
-            lastlap = 91 + (random() * (98 - 91))
+        while count < 20:
+            lastlap = 11 + (random() * (13 - 11))
             if lastlap < bestlap:
                 bestlap = lastlap
             if count % 10 == 0:
@@ -666,7 +666,7 @@ class MainWindow(Window):
                 self.update_data('flags', 268697600)
             count += 1
 
-            sleep(3)
+            sleep(12)
 
             self.process_data()
 
