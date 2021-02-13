@@ -5,6 +5,7 @@ import sys
 from pprint import pprint
 from dataclasses import dataclass, field
 from datetime import timedelta
+from time import sleep
 from random import random
 import traceback
 import requests
@@ -364,6 +365,8 @@ class MainWindow(Window):
             self.state.sent_flag = event
 
     def process_data(self):
+        print(self.driver)
+        print(self.data)
 
         if self.lineEdit_BestLap.text() != self.data.best_laptime:
             self.lineEdit_BestLap.setText(self.data.best_laptime)
@@ -621,6 +624,16 @@ class MainWindow(Window):
         count = 0
         position = 20
         bestlap = 1000
+        self.driver = Driver()
+
+        self.driver.caridx = 1
+        self.driver.name = "Driver Name"
+        self.driver.irating = 1350
+        self.driver.license_string = "A 4.99"
+        license_letter, safety_rating = "A 4.99".split(' ')
+        self.driver.license_letter = license_letter
+        self.driver.safety_rating = float(safety_rating)
+
         while count < 40:
             lastlap = 91 + (random() * (98 - 91))
             if lastlap < bestlap:
@@ -647,12 +660,17 @@ class MainWindow(Window):
             self.update_data('last_laptime', lastlaptime)
             self.update_data('laps', count)
             self.update_data('laps_left', 40 - count)
+            self.update_data('fuel_left', 10.0)
             self.update_data('time_left', str(time_left))
             if count % 13 == 0:
                 self.update_data('flags', 268763136)
             else:
                 self.update_data('flags', 268697600)
-            count += 1  
+            count += 1
+
+            sleep(3)
+
+            self.process_data()
 
     def closeEvent(self, e):
         super().closeEvent(e)
