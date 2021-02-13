@@ -357,7 +357,7 @@ class MainWindow(Window):
                 "icon_type": "none",
                 "lifetime ": 1,
                 "model": {
-                    "cycles": 0,
+                    "cycles": 1,
                     "frames": [{"icon": icon, "text": event}]
                 }
             }
