@@ -365,8 +365,6 @@ class MainWindow(Window):
             self.state.sent_flag = event
 
     def process_data(self):
-        print(self.driver)
-        print(self.data)
 
         if self.lineEdit_BestLap.text() != self.data.best_laptime:
             self.lineEdit_BestLap.setText(self.data.best_laptime)
@@ -503,7 +501,7 @@ class MainWindow(Window):
                 "lifetime ": 2,
                 "model": {
                     "cycles": 1,
-                    "frames": [{"icon": Icons.laps, "text": f"{self.data.laps} / {self.data.laps_left}"}]
+                    "frames": [{"icon": Icons.laps, "text": f"{self.data.laps} / {self.data.laps_left + self.data.laps}"}]
                 }
             }
             self.sent_data.laps = self.data.laps
