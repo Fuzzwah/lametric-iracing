@@ -632,11 +632,14 @@ class MainWindow(Window):
         self.driver.license_letter = license_letter
         self.driver.safety_rating = float(safety_rating)
 
-        while count < 20:
-            lastlap = 11 + (random() * (13 - 11))
+        max = 10
+        min_lap = 13
+
+        while count < max + 1:
+            lastlap = min_lap + (random() * 3)
             if lastlap < bestlap:
                 bestlap = lastlap
-            if count % 10 == 0:
+            if count % 2 == 0:
                 position = position - 1
             self.update_data('position', position)
             self.update_data('cars_in_class', 30)
@@ -652,12 +655,12 @@ class MainWindow(Window):
             except:
                 lastlaptime = ""
             try:
-                time_left = timedelta(seconds=int(40 - count))
+                time_left = timedelta(seconds=int(max - count))
             except:
                 time_left = ""
             self.update_data('last_laptime', lastlaptime)
             self.update_data('laps', count)
-            self.update_data('laps_left', 40 - count)
+            self.update_data('laps_left', max - count)
             self.update_data('fuel_left', 10.0)
             self.update_data('time_left', str(time_left))
             if count % 13 == 0:
@@ -666,7 +669,7 @@ class MainWindow(Window):
                 self.update_data('flags', 268697600)
             count += 1
 
-            sleep(12)
+            sleep(min_lap + 2)
 
             self.process_data()
 
