@@ -5,6 +5,7 @@ import sys
 from pprint import pprint
 from dataclasses import dataclass, field
 from datetime import timedelta
+from random import random
 import traceback
 import requests
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
@@ -617,28 +618,41 @@ class MainWindow(Window):
 
     @pyqtSlot()
     def on_testButton_clicked(self):
-        json = {
-            "priority": "info",
-            "icon_type": "none",
-            "model": {
-                "cycles": 0,
-                "frames": []
-            }
-        }
-        json['model']['frames'].append({"icon": Icons.start_hidden, "text": "Start"})
-        json['model']['frames'].append({"icon": Icons.checkered, "text": "Finish"})
-        json['model']['frames'].append({"icon": Icons.white, "text": "White"})
-        json['model']['frames'].append({"icon": Icons.green, "text": "Green"})
-        json['model']['frames'].append({"icon": Icons.yellow, "text": "Yellow"})
-        json['model']['frames'].append({"icon": Icons.red, "text": "Red"})
-        json['model']['frames'].append({"icon": Icons.blue, "text": "Blue"})
-        json['model']['frames'].append({"icon": Icons.black, "text": "Black"})
-        json['model']['frames'].append({"icon": Icons.disqualify, "text": "DQ"})
-        json['model']['frames'].append({"icon": Icons.repair, "text": "Damage"})
-        json['model']['frames'].append({"icon": Icons.furled, "text": "Warn"})
-        json['model']['frames'].append({"icon": Icons.debris, "text": "Debris"})
-    
-        self.send_notification(json, "test")
+        count = 0
+        position = 20
+        bestlap = 1000
+        while count < 40:
+            lastlap = 91 + (random() * (98 - 91))
+            if lastlap < bestlap:
+                bestlap = lastlap
+            if count % 10 == 0:
+                position = position - 1
+            self.update_data('position', position)
+            self.update_data('cars_in_class', 30)
+            try:
+                minutes, seconds = divmod(float(bestlap), 60)
+                bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
+            except:
+                bestlaptime = ""
+            self.update_data('best_laptime', bestlaptime)
+            try:
+                minutes, seconds = divmod(float(lastlap), 60)
+                lastlaptime = f"{minutes:.0f}:{seconds:.3f}"
+            except:
+                lastlaptime = ""
+            try:
+                time_left = timedelta(seconds=int(40 - count))
+            except:
+                time_left = ""
+            self.update_data('last_laptime', lastlaptime)
+            self.update_data('laps', count)
+            self.update_data('laps_left', 40 - count)
+            self.update_data('time_left', str(time_left))
+            if count % 13 == 0:
+                self.update_data('flags', 268763136)
+            else:
+                self.update_data('flags', 268697600)
+            count += 1  
 
     def closeEvent(self, e):
         super().closeEvent(e)
