@@ -252,7 +252,7 @@ class MainWindow(Window):
         self.timerConnectionMonitor.timeout.connect(self.irsdkConnectionMonitor)
 
         self.timerMainCycle = QTimer()
-        self.timerMainCycle.setInterval(50000)
+        self.timerMainCycle.setInterval(1500)
         self.timerMainCycle.timeout.connect(self.main_cycle)
 
         if self.irsdk_connection_check():
@@ -349,71 +349,71 @@ class MainWindow(Window):
 
         if self.data.flags & Flags.start_hidden and not self.state.start_hidden_sent:
             self.state.start_hidden_sent = True
-            events.append("start_hidden", "Start")
+            events.append(["start_hidden", "Start"])
 
         if self.data.flags & Flags.checkered:
-            events.append("checkered", "Finish")
+            events.append(["checkered", "Finish"])
 
         if self.data.flags & Flags.white:
-            events.append("white", "White")
+            events.append(["white", "White"])
 
         if self.data.flags & Flags.green:
-            events.append("green", "Green")
+            events.append(["green", "Green"])
 
         if self.data.flags & Flags.yellow:
-            events.append("yellow", "Yellow")
+            events.append(["yellow", "Yellow"])
 
         if self.data.flags & Flags.red:
-            events.append("red", "Red")
+            events.append(["red", "Red"])
 
         if self.data.flags & Flags.blue:
-            events.append("blue", "Blue")
+            events.append(["blue", "Blue"])
 
         if self.data.flags & Flags.debris:
-            events.append("debris", "Debris")
+            events.append(["debris", "Debris"])
 
         if self.data.flags & Flags.crossed:
-            events.append("crossed", "Crossed")
+            events.append(["crossed", "Crossed"])
 
         if self.data.flags & Flags.yellow_waving:
-            events.append("yellow_waving", "Yellow")
+            events.append(["yellow_waving", "Yellow"])
 
         if self.data.flags & Flags.one_lap_to_green:
-            events.append("one_lap_to_green", "1 to Green")
+            events.append(["one_lap_to_green", "1 to Green"])
 
         if self.data.flags & Flags.green_held:
-            events.append("green_held", "Green")
+            events.append(["green_held", "Green"])
 
         if self.data.flags & Flags.ten_to_go:
-            events.append("ten_to_go", "10 to go")
+            events.append(["ten_to_go", "10 to go"])
 
         if self.data.flags & Flags.five_to_go:
-            events.append("five_to_go", "5 to go")
+            events.append(["five_to_go", "5 to go"])
 
         if self.data.flags & Flags.random_waving:
-            events.append("random_waving", "Random")
+            events.append(["random_waving", "Random"])
 
         if self.data.flags & Flags.caution:
-            events.append("caution", "Caution")
+            events.append(["caution", "Caution"])
 
         if self.data.flags & Flags.caution_waving:
-            events.append("caution_waving", "Caution")
+            events.append(["caution_waving", "Caution"])
 
         if self.data.flags & Flags.black:
-            events.append("black", "Black")
+            events.append(["black", "Black"])
 
         if self.data.flags & Flags.disqualify:
-            events.append("disqualify", "DQ")
+            events.append(["disqualify", "DQ"])
 
         if self.data.flags & Flags.furled:
-            events.append("furled", "Warning")
+            events.append(["furled", "Warning"])
 
         if self.data.flags & Flags.repair:
-            events.append("repair", "Damage")
+            events.append(["repair", "Damage"])
 
         if self.sent_data.best_laptime != self.data.best_laptime and self.checkBox_BestLap.isChecked():
             self.lineEdit_BestLap.setText(self.data.best_laptime)
-            events.append("purple", self.data.best_laptime)            
+            events.append(["purple", self.data.best_laptime])            
 
         if self.sent_data.position != self.data.position and self.checkBox_Position.isChecked():
             self.lineEdit_Position.setText(f"{ordinal(self.data.position)} / {self.data.cars_in_class}")
@@ -421,7 +421,7 @@ class MainWindow(Window):
             if self.sent_data.position:
                 if self.sent_data.position < self.data.position:
                     event = "lose_position"
-            events.append(event, f"{ordinal(self.data.position)} / {self.data.cars_in_class}")            
+            events.append([event, f"{ordinal(self.data.position)} / {self.data.cars_in_class}"])
 
         if self.sent_data.laps != self.data.laps and self.checkBox_Laps.isChecked():
             self.lineEdit_Laps.setText(f"{self.data.laps}")
@@ -430,9 +430,9 @@ class MainWindow(Window):
             else:
                 laps_total = self.data.laps_total
             self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")
-            events.append('laps', f"{self.data.laps} / {laps_total}")
+            events.append(['laps', f"{self.data.laps} / {laps_total}"])
 
-        events.append('ratings', None)
+        events.append(['ratings', None])
 
         self.send_notification(events)
 
@@ -463,7 +463,7 @@ class MainWindow(Window):
                 self.driver.license_letter = license_letter
                 self.driver.safety_rating = float(safety_rating)
 
-                self.send_notification(["ratings", None])
+                self.send_notification([["ratings", None]])
 
                 self.lineEdit_Name.setText(self.driver.name)
                 self.lineEdit_IRating.setText(f"{self.driver.irating:,}")
@@ -538,6 +538,7 @@ class MainWindow(Window):
             events_to_send.append(event)
 
             if event == "ratings":
+                pprint(self.driver)
             
                 if self.checkBox_IRating.isChecked():
                     json["model"]["frames"].append({"icon": "i43085", "text": f"{self.driver.irating:,}"})
@@ -577,6 +578,7 @@ class MainWindow(Window):
             headers = {"Content-Type": "application/json; charset=utf-8"}
             basicAuthCredentials = ("dev", self.lametric_api_key)
             if len( json["model"]["frames"]) > 0 and events_to_send != self.state.previous_events_sent:
+                pprint(json)
                 try:
                     response = requests.post(
                         lametric_url,
