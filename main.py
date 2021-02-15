@@ -67,6 +67,7 @@ class Data(object):
     cars_in_class: int = None
     laps: int = None
     laps_left: int = None
+    laps_total: int = None
     last_laptime: str = None
     best_laptime: str = None
     fuel_per_lap: float = None
@@ -249,8 +250,41 @@ class MainWindow(Window):
         self.timerConnectionMonitor.setInterval(10000)
         self.timerConnectionMonitor.timeout.connect(self.irsdkConnectionMonitor)
 
+        self.get_queue()
+
+        """
+        ('[ { "created" : "2021-02-15T22:18:32Z", "expiration_date" : '
+        '"2021-02-15T22:20:32Z", "id" : "3275", "model" : { "cycles" : 0, "frames" : '
+        '[ { "icon" : "i43085", "text" : "1 to Green" } ] }, "priority" : "warning", '
+        '"type" : "external" }, { "created" : "2021-02-15T22:25:18Z", '
+        '"expiration_date" : "2021-02-15T22:27:18Z", "id" : "3323", "model" : { '
+        '"cycles" : 0, "frames" : [ { "icon" : "i43085", "text" : "1 to Green" } ] }, '
+        '"priority" : "warning", "type" : "external" }, { "created" : '
+        '"2021-02-15T22:24:27Z", "expiration_date" : "2021-02-15T22:26:27Z", "id" : '
+        '"3321", "model" : { "cycles" : 0, "frames" : [ { "icon" : "i43085", "text" : '
+        '"1" }, { "icon" : "i43591", "text" : "0.01" } ] }, "priority" : "info", '
+        '"type" : "external" }, { "created" : "2021-02-15T22:25:18Z", '
+        '"expiration_date" : "2021-02-15T22:27:18Z", "id" : "3322", "model" : { '
+        '"cycles" : 0, "frames" : [ { "icon" : "a43445", "text" : "Start" } ] }, '
+        '"priority" : "info", "type" : "external" }, { "created" : '
+        '"2021-02-15T22:25:18Z", "expiration_date" : "2021-02-15T22:27:18Z", "id" : '
+        '"3324", "model" : { "cycles" : 0, "frames" : [ { "icon" : "43599", "text" : '
+        '"0:0.000" } ] }, "priority" : "info", "type" : "external" }, { "created" : '
+        '"2021-02-15T22:25:18Z", "expiration_date" : "2021-02-15T22:27:18Z", "id" : '
+        '"3325", "model" : { "cycles" : 0, "frames" : [ { "icon" : "a43651", "text" : '
+        '"0th / 64" } ] }, "priority" : "info", "type" : "external" }, { "created" : '
+        '"2021-02-15T22:25:18Z", "expiration_date" : "2021-02-15T22:27:18Z", "id" : '
+        '"3326", "model" : { "cycles" : 0, "frames" : [ { "icon" : "43645", "text" : '
+        '"-1 / \\u221e" } ] }, "priority" : "info", "type" : "external" }, { '
+        '"created" : "2021-02-15T22:25:18Z", "expiration_date" : '
+        '"2021-02-15T22:27:18Z", "id" : "3327", "model" : { "cycles" : 0, "frames" : '
+        '[ { "icon" : "i43085", "text" : "1" }, { "icon" : "i43591", "text" : "0.01" '
+        '} ] }, "priority" : "info", "type" : "external" } ]')
+        """        
+
+
         self.timerMainCycle = QTimer()
-        self.timerMainCycle.setInterval(500)
+        self.timerMainCycle.setInterval(50000)
         self.timerMainCycle.timeout.connect(self.main_cycle)
 
         if self.irsdk_connection_check():
@@ -311,8 +345,9 @@ class MainWindow(Window):
             time_left = ""
         self.update_data('last_laptime', lastlaptime)
         self.update_data('fuel_left', self.ir['FuelLevel'])
-        self.update_data('laps', self.ir['LapCompleted'])
-        self.update_data('laps_left', float(self.ir['SessionLapsRemainEx']))
+        self.update_data('laps', int(self.ir['LapCompleted']))
+        self.update_data('laps_left', int(self.ir['SessionLapsRemainEx']))
+        self.update_data('laps_total', int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx']))
         self.update_data('time_left', str(time_left))
         self.update_data('flags', int(self.ir['SessionFlags']))
         self.ir.unfreeze_var_buffer_latest()
@@ -420,13 +455,16 @@ class MainWindow(Window):
 
         if self.sent_data.laps != self.data.laps and self.checkBox_Laps.isChecked():
             self.lineEdit_Laps.setText(f"{self.data.laps}")
-            if self.data.laps_left == 32767.0:
-                self.data.laps_left = "∞"
+            if self.data.laps_total > 32000:
+                laps_total = "∞"
+            else:
+                laps_total = self.data.laps_total
             self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")
-            self.send_notification('laps', f"{self.data.laps} / {self.data.laps_left + self.data.laps}")
+            self.send_notification('laps', f"{self.data.laps} / {laps_total}")
 
         if self.state.previous_event_sent != "ratings":
-            self.send_notification('rating', None)
+            self.send_notification('ratings', None)
+
 
     def main_cycle(self):
         main_cycle_worker = Worker(self.data_collection_cycle)
@@ -473,6 +511,44 @@ class MainWindow(Window):
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
         self.timerMainCycle.stop()
         self.timerConnectionMonitor.start()
+
+    def get_queue(self):
+        s = QSettings()
+
+        try:
+            self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
+        except:
+            self.lametric_ip = None
+        try:
+            self.lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
+        except:
+            self.lametric_api_key = None
+
+        if self.lametric_ip and self.lametric_api_key:
+            lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
+            headers = {"Content-Type": "application/json; charset=utf-8"}
+            basicAuthCredentials = ("dev", self.lametric_api_key)
+            try:
+                response = requests.get(
+                    lametric_url,
+                    headers=headers,
+                    auth=basicAuthCredentials,
+                    timeout=1,
+                )
+                pprint(response.text)
+            except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
+                print("Failed to send data to LaMetric device: ", err)
+            except requests.exceptions.RequestException as err:
+                print("Oops: Something Else: ", err)
+            except requests.exceptions.ConnectionRefusedError as err:
+                print("Connection Refused: ", err)
+            except requests.exceptions.HTTPError as errh:
+                print("Http Error: ", errh)
+            except requests.exceptions.ConnectionError as errc:
+                print("Error Connecting: ", errc)
+            except requests.exceptions.Timeout as errt:
+                print("Timeout: ", errt)
+        
 
     def send_notification(self, event, text):
         s = QSettings()
