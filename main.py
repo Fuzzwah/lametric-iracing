@@ -48,7 +48,8 @@ def ordinal(num):
 
 @dataclass
 class Driver(object):
-    """ a generic object to collect up the information about the driver
+    """ 
+    a dataclass object to collect up the information about the driver
     """
 
     caridx: int = None
@@ -61,7 +62,8 @@ class Driver(object):
 
 @dataclass
 class Data(object):
-    """ a generic object to collect up the data we need from the irsdk
+    """ 
+    a dataclass object to collect up the data we need from the irsdk
     """
 
     position: int = None
@@ -80,7 +82,8 @@ class Data(object):
 
 @dataclass
 class Icons(object):
-    """ a generic object to pass around information regarding the icons
+    """ 
+    a dataclass object to pass around information regarding the icons
     """
 
     ir: str = 'i43085'
@@ -127,7 +130,8 @@ class Icons(object):
 
 @dataclass
 class State(object):
-    """ a generic object to pass around information regarding the current state
+    """ 
+    a dataclass object to pass around information regarding the current state
     """
 
     ir_connected: bool = False
@@ -268,6 +272,9 @@ class MainWindow(Window):
     # here we check if we are connected to iracing
     # so we can retrieve some data
     def irsdk_connection_check(self):
+        """
+        Checks to see if the irsdk object is connected to the iRacing client
+        """
         if self.state.ir_connected and not (self.ir.is_initialized and self.ir.is_connected):
             return False
         elif not self.state.ir_connected and self.ir.startup(silent=True) and self.ir.is_initialized and self.ir.is_connected:
@@ -276,24 +283,37 @@ class MainWindow(Window):
             return True
              
     def irsdk_connection_controller(self, now_connected):
+        """
+        Handles the triggering of things to do when the irsdk becomes connected / disconnected to the iRacing client
+        """
         if now_connected and not self.state.ir_connected:
             self.onConnection()
         elif not now_connected and self.state.ir_connected:
             self.onDisconnection()
  
     def irsdkConnectionMonitor(self):
+        """
+        Sets up and kicks off the worker that monitors the state of the connection to the iRacing client
+        """
         monitor_worker = Worker(self.irsdk_connection_check)
         monitor_worker.signals.result.connect(self.irsdk_connection_controller)
         
         self.threadpool.start(monitor_worker)
 
     def update_data(self, attr, value):
+        """
+        A little wrapper to handle updating the information in the Data object
+        """
         try:
             setattr(self.data, attr, value)
         except KeyError:
             setattr(self.data, attr, None)
 
     def data_collection_cycle(self):
+        """
+        Runs on a loop that polls the iRacing client for driver data, flags, other info
+        It loads the data into the data object and then the process_data function runs
+        """
         self.ir.freeze_var_buffer_latest()
         self.update_data('position', int(self.ir['PlayerCarClassPosition']))
         self.update_data('cars_in_class', int(len(self.ir['CarIdxClassPosition'])))
@@ -322,7 +342,10 @@ class MainWindow(Window):
         self.ir.unfreeze_var_buffer_latest()
 
     def process_data(self):
-
+        """
+        Runs on a loop and processes the data stored in the data object
+        Builds a list of events to send to the notification sender
+        """
         events = []
         flag = False
 
@@ -458,12 +481,19 @@ class MainWindow(Window):
         self.send_notification(events)
 
     def main_cycle(self):
+        """
+        Sets up and kicks off the worker collects data from the iRacing client and then processes it
+        """
         main_cycle_worker = Worker(self.data_collection_cycle)
         main_cycle_worker.signals.result.connect(self.process_data)
         
         self.threadpool.start(main_cycle_worker)
 
     def onConnection(self):
+        """
+        When the connection to iRacing client becomes active, this function runs
+        It updates the status bar, grabs initial driver info, triggers to endless ratings notifications, and starts the main cycle loop
+        """
         try:
             self.timerConnectionMonitor.stop()
         except:
@@ -495,6 +525,10 @@ class MainWindow(Window):
         self.timerMainCycle.start()
 
     def onDisconnection(self):
+        """
+        When the connection to iRacing client is lost, this function runs
+        Updates the status bar, stops the main cycle
+        """
         self.state = State()
         self.ir.shutdown()
 
@@ -504,7 +538,9 @@ class MainWindow(Window):
         self.timerConnectionMonitor.start()
 
     def send_ratings(self):
-
+        """
+        A wrapper that builds the events list containing iRating and License / SR info, and triggers the notification send
+        """
         events = []
 
         if self.checkBox_IRating.isChecked():
@@ -531,11 +567,17 @@ class MainWindow(Window):
             self.send_notification(events, priority="info")
 
     def dismiss_notifications(self):
+        """
+        Dismisses notifications, can be limited to only dismissing those with a priority of warning
+        """
         notifications = self.call_lametric_api("queue")
         for n in notifications:
             self.delete_notification_id(int(n['id']))
 
     def send_notification(self, events, priority="warning"):
+        """
+
+        """
         events_to_send = []
 
         data = {
@@ -558,6 +600,9 @@ class MainWindow(Window):
 
 
     def call_lametric_api(self, endpoint, data=None, id=None):
+        """
+
+        """
         s = QSettings()
         try:
             self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
@@ -612,6 +657,9 @@ class MainWindow(Window):
                 print("Timeout: ", errt)        
 
     def show_settings(self):
+        """
+
+        """
         self.open_dialog()
 
     @pyqtSlot()
@@ -630,6 +678,9 @@ class MainWindow(Window):
 
     @pyqtSlot()
     def on_testButton_clicked(self):
+        """
+
+        """
         count = 0
         position = 10
         bestlap = 1000
@@ -685,6 +736,9 @@ class MainWindow(Window):
             self.process_data()
 
     def closeEvent(self, e):
+        """
+
+        """
         super().closeEvent(e)
         self.ir.shutdown()
         self.timerConnectionMonitor.stop()
