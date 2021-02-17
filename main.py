@@ -464,7 +464,7 @@ class MainWindow(Window):
             if self.sent_data.position:
                 if self.sent_data.position < self.data.position:
                     event = "lose_position"
-            events.append([event, f"{ordinal(self.data.position)} / {self.data.cars_in_class}"])
+            events.append([event, f"{ordinal(self.data.position)}/{self.data.cars_in_class}"])
 
         if self.checkBox_Laps.isChecked() and not flag and self.sent_data.laps != self.data.laps and self.data.laps > 0:
             self.lineEdit_Laps.setText(f"{self.data.laps}")
@@ -711,7 +711,7 @@ class MainWindow(Window):
             self.update_data('cars_in_class', 30)
             try:
                 minutes, seconds = divmod(float(bestlap), 60)
-                bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
+                bestlaptime = f"{minutes:.0f}:{seconds:02.3f}"
             except:
                 bestlaptime = ""
             self.update_data('best_laptime', bestlaptime)
