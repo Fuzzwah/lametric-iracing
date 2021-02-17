@@ -574,10 +574,10 @@ class MainWindow(Window):
             self.lametric_api_key = None
 
         if self.lametric_ip and self.lametric_api_key:
-            lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
-            headers = {"Content-Type": "application/json; charset=utf-8"}
-            basicAuthCredentials = ("dev", self.lametric_api_key)
-            if len( json["model"]["frames"]) > 0 and events_to_send != self.state.previous_events_sent:
+            if sorted(events_to_send) != sorted(self.state.previous_events_sent) and len( json["model"]["frames"]) > 0:
+                lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
+                headers = {"Content-Type": "application/json; charset=utf-8"}
+                basicAuthCredentials = ("dev", self.lametric_api_key)
                 pprint(json)
                 try:
                     response = requests.post(
@@ -587,7 +587,9 @@ class MainWindow(Window):
                         json=json,
                         timeout=1,
                     )
-                    print(response.text)
+                    res_json = json.loads(response.text)
+                    pprint(res_json)
+                    print(res_json['success']['id'])
                     self.state.previous_events_sent = events_to_send
                 except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
                     print("Failed to send data to LaMetric device: ", err)
