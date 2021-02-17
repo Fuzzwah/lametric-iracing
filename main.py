@@ -316,13 +316,13 @@ class MainWindow(Window):
         self.update_data('cars_in_class', int(len(self.ir['CarIdxClassPosition'])))
         try:
             minutes, seconds = divmod(float(self.ir['LapBestLapTime']), 60)
-            bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
+            bestlaptime = f"{minutes:.0f}:{seconds:02.3f}"
         except:
             bestlaptime = ""
         self.update_data('best_laptime', bestlaptime)
         try:
             minutes, seconds = divmod(float(self.ir['LapLastLapTime']), 60)
-            lastlaptime = f"{minutes:.0f}:{seconds:.3f}"
+            lastlaptime = f"{minutes:.0f}:{seconds:02.3f}"
         except:
             lastlaptime = ""
         try:
@@ -685,59 +685,7 @@ class MainWindow(Window):
         """
         What to do when the test button is clicked
         """
-        count = 0
-        position = 10
-        bestlap = 1000
-        self.driver = Driver()
-
-        self.driver.caridx = 1
-        self.driver.name = "Driver Name"
-        self.driver.irating = 1350
-        self.driver.license_string = "A 4.99"
-        license_letter, safety_rating = "A 4.99".split(' ')
-        self.driver.license_letter = license_letter
-        self.driver.safety_rating = float(safety_rating)
-
-        max = 10
-        min_lap = 13
-
-        while count < max + 1:
-            lastlap = min_lap + (random() * 3)
-            if lastlap < bestlap:
-                bestlap = lastlap
-            if count % 2 == 0:
-                position = position - 1
-            self.update_data('position', position)
-            self.update_data('cars_in_class', 30)
-            try:
-                minutes, seconds = divmod(float(bestlap), 60)
-                bestlaptime = f"{minutes:.0f}:{seconds:02.3f}"
-            except:
-                bestlaptime = ""
-            self.update_data('best_laptime', bestlaptime)
-            try:
-                minutes, seconds = divmod(float(lastlap), 60)
-                lastlaptime = f"{minutes:.0f}:{seconds:.3f}"
-            except:
-                lastlaptime = ""
-            try:
-                time_left = timedelta(seconds=int(max - count))
-            except:
-                time_left = ""
-            self.update_data('last_laptime', lastlaptime)
-            self.update_data('laps', count)
-            self.update_data('laps_left', max - count)
-            self.update_data('fuel_left', 10.0)
-            self.update_data('time_left', str(time_left))
-            if count % 13 == 0:
-                self.update_data('flags', 268763136)
-            else:
-                self.update_data('flags', 268697600)
-            count += 1
-
-            sleep(min_lap + 2)
-
-            self.process_data()
+        pprint(self.notification_queue())
 
     def closeEvent(self, e):
         """
