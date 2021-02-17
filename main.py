@@ -133,7 +133,7 @@ class State(object):
     ir_connected: bool = False
     car_in_world: bool = False
     last_car_setup_tick: int = -1
-    start_hidden_sent: bool = False
+    start_shown_cycles: int = 0
     previous_events_sent: list = field(default_factory=list)
 
 
@@ -229,9 +229,6 @@ class MainWindow(Window):
         self.register_widget(self.checkBox_Position, default=True)
         self.register_widget(self.checkBox_Laps, default=True)
         self.register_widget(self.checkBox_LapsLeft, default=True)
-        self.register_widget(self.lineEdit_Name)
-        self.register_widget(self.lineEdit_IRating)
-        self.register_widget(self.lineEdit_License)
 
         self.register_widget(self.checkBox_LastLap, default=True)
         self.register_widget(self.checkBox_BestLap, default=True)
@@ -349,8 +346,8 @@ class MainWindow(Window):
                 self.data.laps_left = "∞"
             self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")        
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and not self.state.start_hidden_sent:
-            self.state.start_hidden_sent = True
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and self.state.start_shown_cycles < 20:
+            self.state.start_shown_cycles += 1
             flag =True
             events.append(["start_hidden", "Start"])
 
@@ -484,13 +481,13 @@ class MainWindow(Window):
                 self.driver.license_letter = license_letter
                 self.driver.safety_rating = float(safety_rating)
 
-                self.send_ratings()
-
-                self.lineEdit_Name.setText(self.driver.name)
-                self.lineEdit_IRating.setText(f"{self.driver.irating:,}")
-                self.lineEdit_License.setText(self.driver.license_string)
-
                 break
+
+        self.lineEdit_Name.setText(self.driver.name)
+        self.lineEdit_IRating.setText(f"{self.driver.irating:,}")
+        self.lineEdit_License.setText(self.driver.license_string)
+
+        self.send_ratings()
 
         self.timerMainCycle.start()
 
@@ -511,29 +508,34 @@ class MainWindow(Window):
             events.append(["ir", f"{self.driver.irating:,}"])
 
         if self.checkBox_License.isChecked():
-            icon = Icons.ir
+            icon = "ir"
             if self.driver.license_letter == 'R':
-                icon = Icons.license_letter_r
+                icon = "license_letter_r"
             elif self.driver.license_letter == 'D':
-                icon = Icons.license_letter_d
+                icon = "license_letter_d"
             elif self.driver.license_letter == 'C':
-                icon = Icons.license_letter_c
+                icon = "license_letter_c"
             elif self.driver.license_letter == 'B':
-                icon = Icons.license_letter_b
+                icon = "license_letter_b"
             elif self.driver.license_letter == 'A':
-                icon = Icons.license_letter_a
+                icon = "license_letter_a"
             elif self.driver.license_letter == 'P':
-                icon = Icons.license_letter_p
+                icon = "license_letter_p"
             
             events.append([icon, f"{self.driver.safety_rating}"])
 
         if len(events) > 0:
             self.send_notification(events, priority="info")
 
-    def dismiss_notifications(self):
+    def dismiss_notifications(self, level):
         notifications = self.call_lametric_api("queue")
         for n in notifications:
-            self.delete_notification_id(int(n['id']))
+            dismiss = True
+            if level == "warning":
+                if n['priority'] != 'warning':
+                    dismiss = False
+            if dismiss:
+                self.call_lametric_api("delete", id=int(n['id']))
 
     def send_notification(self, events, priority="warning"):
         events_to_send = []
@@ -552,8 +554,10 @@ class MainWindow(Window):
             icon = getattr(Icons, event)
             data["model"]["frames"].append({"icon": icon, "text": text})
 
-        if sorted(events_to_send) != sorted(self.state.previous_events_sent) and len(data["model"]["frames"]) > 0:
-            self.call_lametric_api("send", data=data)
+        if sorted(events_to_send) != sorted(self.state.previous_events_sent):
+            self.dismiss_notifications("warning")
+            if len(data["model"]["frames"]) > 0:
+                self.call_lametric_api("send", data=data)
             self.state.previous_events_sent = events_to_send
 
 
