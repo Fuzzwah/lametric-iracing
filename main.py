@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from time import sleep
 from random import random
+import json
 import traceback
 import requests
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
@@ -133,7 +134,7 @@ class State(object):
     car_in_world: bool = False
     last_car_setup_tick: int = -1
     start_hidden_sent: bool = False
-    previous_events_sent: str = None
+    previous_events_sent: list = field(default_factory=list)
 
 
 class WorkerSignals(QObject):
@@ -252,7 +253,7 @@ class MainWindow(Window):
         self.timerConnectionMonitor.timeout.connect(self.irsdkConnectionMonitor)
 
         self.timerMainCycle = QTimer()
-        self.timerMainCycle.setInterval(1500)
+        self.timerMainCycle.setInterval(500)
         self.timerMainCycle.timeout.connect(self.main_cycle)
 
         if self.irsdk_connection_check():
@@ -323,6 +324,7 @@ class MainWindow(Window):
     def process_data(self):
 
         events = []
+        flag = False
 
         if self.lineEdit_BestLap.text() != self.data.best_laptime:
             self.lineEdit_BestLap.setText(self.data.best_laptime)
@@ -347,75 +349,96 @@ class MainWindow(Window):
                 self.data.laps_left = "∞"
             self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")        
 
-        if self.data.flags & Flags.start_hidden and not self.state.start_hidden_sent:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and not self.state.start_hidden_sent:
             self.state.start_hidden_sent = True
+            flag =True
             events.append(["start_hidden", "Start"])
 
-        if self.data.flags & Flags.checkered:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.checkered:
+            flag =True
             events.append(["checkered", "Finish"])
 
-        if self.data.flags & Flags.white:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.white:
+            flag =True
             events.append(["white", "White"])
 
-        if self.data.flags & Flags.green:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green:
+            flag =True
             events.append(["green", "Green"])
 
-        if self.data.flags & Flags.yellow:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow:
+            flag =True
             events.append(["yellow", "Yellow"])
 
-        if self.data.flags & Flags.red:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.red:
+            flag =True
             events.append(["red", "Red"])
 
-        if self.data.flags & Flags.blue:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.blue:
+            flag =True
             events.append(["blue", "Blue"])
 
-        if self.data.flags & Flags.debris:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.debris:
+            flag =True
             events.append(["debris", "Debris"])
 
-        if self.data.flags & Flags.crossed:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.crossed:
+            flag =True
             events.append(["crossed", "Crossed"])
 
-        if self.data.flags & Flags.yellow_waving:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow_waving:
+            flag =True
             events.append(["yellow_waving", "Yellow"])
 
-        if self.data.flags & Flags.one_lap_to_green:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.one_lap_to_green:
+            flag =True
             events.append(["one_lap_to_green", "1 to Green"])
 
-        if self.data.flags & Flags.green_held:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green_held:
+            flag =True
             events.append(["green_held", "Green"])
 
-        if self.data.flags & Flags.ten_to_go:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.ten_to_go:
+            flag =True
             events.append(["ten_to_go", "10 to go"])
 
-        if self.data.flags & Flags.five_to_go:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.five_to_go:
+            flag =True
             events.append(["five_to_go", "5 to go"])
 
-        if self.data.flags & Flags.random_waving:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.random_waving:
+            flag =True
             events.append(["random_waving", "Random"])
 
-        if self.data.flags & Flags.caution:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution:
+            flag =True
             events.append(["caution", "Caution"])
 
-        if self.data.flags & Flags.caution_waving:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution_waving:
+            flag =True
             events.append(["caution_waving", "Caution"])
 
-        if self.data.flags & Flags.black:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.black:
+            flag =True
             events.append(["black", "Black"])
 
-        if self.data.flags & Flags.disqualify:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.disqualify:
+            flag =True
             events.append(["disqualify", "DQ"])
 
-        if self.data.flags & Flags.furled:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.furled:
+            flag =True
             events.append(["furled", "Warning"])
 
-        if self.data.flags & Flags.repair:
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.repair:
+            flag =True
             events.append(["repair", "Damage"])
 
-        if self.sent_data.best_laptime != self.data.best_laptime and self.checkBox_BestLap.isChecked():
+        if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime and self.data.best_laptime != "0:0.000":
             self.lineEdit_BestLap.setText(self.data.best_laptime)
             events.append(["purple", self.data.best_laptime])            
 
-        if self.sent_data.position != self.data.position and self.checkBox_Position.isChecked():
+        if self.checkBox_Position.isChecked() and not flag and self.sent_data.position != self.data.position and self.data.position != 0:
             self.lineEdit_Position.setText(f"{ordinal(self.data.position)} / {self.data.cars_in_class}")
             event = "gain_position"
             if self.sent_data.position:
@@ -423,7 +446,7 @@ class MainWindow(Window):
                     event = "lose_position"
             events.append([event, f"{ordinal(self.data.position)} / {self.data.cars_in_class}"])
 
-        if self.sent_data.laps != self.data.laps and self.checkBox_Laps.isChecked():
+        if self.checkBox_Laps.isChecked() and not flag and self.sent_data.laps != self.data.laps and self.data.laps > 0:
             self.lineEdit_Laps.setText(f"{self.data.laps}")
             if self.data.laps_total > 32000:
                 laps_total = "∞"
@@ -432,7 +455,8 @@ class MainWindow(Window):
             self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")
             events.append(['laps', f"{self.data.laps} / {laps_total}"])
 
-        events.append(['ratings', None])
+        if not flag:
+            events.append(['ratings', None])
 
         self.send_notification(events)
 
@@ -482,7 +506,43 @@ class MainWindow(Window):
         self.timerMainCycle.stop()
         self.timerConnectionMonitor.start()
 
-    def get_queue(self):
+    def delete_notification_id(self, id):
+        s = QSettings()
+
+        try:
+            self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
+        except:
+            self.lametric_ip = None
+        try:
+            self.lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
+        except:
+            self.lametric_api_key = None
+
+        if self.lametric_ip and self.lametric_api_key:
+            lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications/{id}"
+            headers = {"Content-Type": "application/json; charset=utf-8"}
+            basicAuthCredentials = ("dev", self.lametric_api_key)
+            try:
+                response = requests.delete(
+                    lametric_url,
+                    headers=headers,
+                    auth=basicAuthCredentials,
+                    timeout=1,
+                )
+                res = json.loads(response.text)
+                pprint(res)
+            except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
+                print("Failed to send data to LaMetric device: ", err)
+            except requests.exceptions.RequestException as err:
+                print("Oops: Something Else: ", err)
+            except requests.exceptions.HTTPError as errh:
+                print("Http Error: ", errh)
+            except requests.exceptions.ConnectionError as errc:
+                print("Error Connecting: ", errc)
+            except requests.exceptions.Timeout as errt:
+                print("Timeout: ", errt)        
+
+    def current_notifications(self):
         s = QSettings()
 
         try:
@@ -505,27 +565,31 @@ class MainWindow(Window):
                     auth=basicAuthCredentials,
                     timeout=1,
                 )
-                pprint(response.text)
+                res = json.loads(response.text)
+                pprint(res)
+                return res
             except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
                 print("Failed to send data to LaMetric device: ", err)
             except requests.exceptions.RequestException as err:
                 print("Oops: Something Else: ", err)
-            except requests.exceptions.ConnectionRefusedError as err:
-                print("Connection Refused: ", err)
             except requests.exceptions.HTTPError as errh:
                 print("Http Error: ", errh)
             except requests.exceptions.ConnectionError as errc:
                 print("Error Connecting: ", errc)
             except requests.exceptions.Timeout as errt:
                 print("Timeout: ", errt)
-        
+
+    def dismiss_notifications(self):
+        notifications = self.current_notifications()
+        for n in notifications:
+            self.delete_notification_id(int(n['id']))
 
     def send_notification(self, events):
         s = QSettings()
 
         events_to_send = []
 
-        json = {
+        data = {
             "priority": "info",
             "icon_type":"none",
             "model": {
@@ -538,10 +602,8 @@ class MainWindow(Window):
             events_to_send.append(event)
 
             if event == "ratings":
-                pprint(self.driver)
-            
                 if self.checkBox_IRating.isChecked():
-                    json["model"]["frames"].append({"icon": "i43085", "text": f"{self.driver.irating:,}"})
+                    data["model"]["frames"].append({"icon": "i43085", "text": f"{self.driver.irating:,}"})
 
                 if self.checkBox_License.isChecked():
                     icon = Icons.ir
@@ -558,11 +620,11 @@ class MainWindow(Window):
                     elif self.driver.license_letter == 'P':
                         icon = Icons.license_letter_p
 
-                    json["model"]["frames"].append({"icon": icon, "text": f"{self.driver.safety_rating}"})
+                    data["model"]["frames"].append({"icon": icon, "text": f"{self.driver.safety_rating}"})
 
             else:
                 icon = getattr(Icons, event)
-                json["model"]["frames"].append({"icon": icon, "text": text})
+                data["model"]["frames"].append({"icon": icon, "text": text})
 
         try:
             self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
@@ -574,29 +636,25 @@ class MainWindow(Window):
             self.lametric_api_key = None
 
         if self.lametric_ip and self.lametric_api_key:
-            if sorted(events_to_send) != sorted(self.state.previous_events_sent) and len( json["model"]["frames"]) > 0:
+            if sorted(events_to_send) != sorted(self.state.previous_events_sent) and len( data["model"]["frames"]) > 0:
                 lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
                 headers = {"Content-Type": "application/json; charset=utf-8"}
                 basicAuthCredentials = ("dev", self.lametric_api_key)
-                pprint(json)
+                self.dismiss_notifications()
+                #sleep(0.5)
                 try:
                     response = requests.post(
                         lametric_url,
                         headers=headers,
                         auth=basicAuthCredentials,
-                        json=json,
+                        json=data,
                         timeout=1,
                     )
-                    res_json = json.loads(response.text)
-                    pprint(res_json)
-                    print(res_json['success']['id'])
                     self.state.previous_events_sent = events_to_send
                 except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
                     print("Failed to send data to LaMetric device: ", err)
                 except requests.exceptions.RequestException as err:
                     print("Oops: Something Else: ", err)
-                except requests.exceptions.ConnectionRefusedError as err:
-                    print("Connection Refused: ", err)
                 except requests.exceptions.HTTPError as errh:
                     print("Http Error: ", errh)
                 except requests.exceptions.ConnectionError as errc:
