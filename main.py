@@ -567,9 +567,6 @@ class MainWindow(Window):
             self.send_notification(events, priority="info")
 
     def dismiss_notifications(self):
-        """
-        Dismisses notifications, can be limited to only dismissing those with a priority of warning
-        """
         notifications = self.call_lametric_api("queue")
         for n in notifications:
             self.delete_notification_id(int(n['id']))
