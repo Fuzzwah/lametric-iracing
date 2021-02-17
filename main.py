@@ -564,6 +564,9 @@ class MainWindow(Window):
             self.send_notification(events, priority="info")
 
     def dismiss_notifications(self, level):
+        """
+        Dismisses notifications, can be limited to only dismissing those with a priority of warning
+        """
         notifications = self.call_lametric_api("queue")
         for n in notifications:
             dismiss = True
@@ -575,7 +578,7 @@ class MainWindow(Window):
 
     def send_notification(self, events, priority="warning"):
         """
-
+        Accepts a list of events and packages them up into json and triggers the sending of a notification via LaMetic API
         """
         events_to_send = []
 
@@ -602,7 +605,7 @@ class MainWindow(Window):
 
     def call_lametric_api(self, endpoint, data=None, id=None):
         """
-
+        The function that handles all interactions (send, list queue, delete from queue) with the LaMetric clock via API calls
         """
         s = QSettings()
         try:
@@ -659,7 +662,7 @@ class MainWindow(Window):
 
     def show_settings(self):
         """
-
+        Triggers the opening of the settings window
         """
         self.open_dialog()
 
@@ -680,7 +683,7 @@ class MainWindow(Window):
     @pyqtSlot()
     def on_testButton_clicked(self):
         """
-
+        What to do when the test button is clicked
         """
         count = 0
         position = 10
@@ -738,7 +741,7 @@ class MainWindow(Window):
 
     def closeEvent(self, e):
         """
-
+        When the application is closed, these tasks will be completed
         """
         super().closeEvent(e)
         self.ir.shutdown()
