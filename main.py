@@ -597,11 +597,10 @@ class MainWindow(Window):
             data["model"]["frames"].append({"icon": icon, "text": text})
 
         if sorted(events_to_send) != sorted(self.state.previous_events_sent):
-            self.dismiss_notifications("warning")
+            #self.dismiss_notifications("warning")
             if len(data["model"]["frames"]) > 0:
                 self.call_lametric_api("send", data=data)
             self.state.previous_events_sent = events_to_send
-
 
     def call_lametric_api(self, endpoint, data=None, id=None):
         """
