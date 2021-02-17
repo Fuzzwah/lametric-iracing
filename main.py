@@ -455,9 +455,6 @@ class MainWindow(Window):
             self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")
             events.append(['laps', f"{self.data.laps} / {laps_total}"])
 
-        if not flag:
-            events.append(['ratings', None])
-
         self.send_notification(events)
 
     def main_cycle(self):
@@ -487,7 +484,7 @@ class MainWindow(Window):
                 self.driver.license_letter = license_letter
                 self.driver.safety_rating = float(safety_rating)
 
-                self.send_notification([["ratings", None]])
+                self.send_ratings()
 
                 self.lineEdit_Name.setText(self.driver.name)
                 self.lineEdit_IRating.setText(f"{self.driver.irating:,}")
@@ -506,45 +503,62 @@ class MainWindow(Window):
         self.timerMainCycle.stop()
         self.timerConnectionMonitor.start()
 
-    def delete_notification_id(self, id):
+    def send_ratings(self):
+
+        events = []
+
+        if self.checkBox_IRating.isChecked():
+            events.append(["ir", f"{self.driver.irating:,}"])
+
+        if self.checkBox_License.isChecked():
+            icon = Icons.ir
+            if self.driver.license_letter == 'R':
+                icon = Icons.license_letter_r
+            elif self.driver.license_letter == 'D':
+                icon = Icons.license_letter_d
+            elif self.driver.license_letter == 'C':
+                icon = Icons.license_letter_c
+            elif self.driver.license_letter == 'B':
+                icon = Icons.license_letter_b
+            elif self.driver.license_letter == 'A':
+                icon = Icons.license_letter_a
+            elif self.driver.license_letter == 'P':
+                icon = Icons.license_letter_p
+            
+            events.append([icon, f"{self.driver.safety_rating}"])
+
+        if len(events) > 0:
+            self.send_notification(events, priority="info")
+
+    def dismiss_notifications(self):
+        notifications = self.call_lametric_api("queue")
+        for n in notifications:
+            self.delete_notification_id(int(n['id']))
+
+    def send_notification(self, events, priority="warning"):
+        events_to_send = []
+
+        data = {
+            "priority": priority,
+            "icon_type":"none",
+            "model": {
+                "cycles": 0,
+                "frames": []
+            }
+        }
+
+        for event, text in events:
+            events_to_send.append(event)
+            icon = getattr(Icons, event)
+            data["model"]["frames"].append({"icon": icon, "text": text})
+
+        if sorted(events_to_send) != sorted(self.state.previous_events_sent) and len(data["model"]["frames"]) > 0:
+            self.call_lametric_api("send", data=data)
+            self.state.previous_events_sent = events_to_send
+
+
+    def call_lametric_api(self, endpoint, data=None, id=None):
         s = QSettings()
-
-        try:
-            self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
-        except:
-            self.lametric_ip = None
-        try:
-            self.lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
-        except:
-            self.lametric_api_key = None
-
-        if self.lametric_ip and self.lametric_api_key:
-            lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications/{id}"
-            headers = {"Content-Type": "application/json; charset=utf-8"}
-            basicAuthCredentials = ("dev", self.lametric_api_key)
-            try:
-                response = requests.delete(
-                    lametric_url,
-                    headers=headers,
-                    auth=basicAuthCredentials,
-                    timeout=1,
-                )
-                res = json.loads(response.text)
-                pprint(res)
-            except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
-                print("Failed to send data to LaMetric device: ", err)
-            except requests.exceptions.RequestException as err:
-                print("Oops: Something Else: ", err)
-            except requests.exceptions.HTTPError as errh:
-                print("Http Error: ", errh)
-            except requests.exceptions.ConnectionError as errc:
-                print("Error Connecting: ", errc)
-            except requests.exceptions.Timeout as errt:
-                print("Timeout: ", errt)        
-
-    def current_notifications(self):
-        s = QSettings()
-
         try:
             self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
         except:
@@ -556,18 +570,36 @@ class MainWindow(Window):
 
         if self.lametric_ip and self.lametric_api_key:
             lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
+            if endpoint == "delete":
+                lametric_url = f"{lametric_url}/{id}"
             headers = {"Content-Type": "application/json; charset=utf-8"}
             basicAuthCredentials = ("dev", self.lametric_api_key)
             try:
-                response = requests.get(
-                    lametric_url,
-                    headers=headers,
-                    auth=basicAuthCredentials,
-                    timeout=1,
-                )
-                res = json.loads(response.text)
-                pprint(res)
-                return res
+                response = False
+                if endpoint == "send":
+                    response = requests.post(
+                        lametric_url,
+                        headers=headers,
+                        auth=basicAuthCredentials,
+                        json=data,
+                        timeout=1,
+                    )
+                elif endpoint == "queue":
+                    response = requests.get(
+                        lametric_url,
+                        headers=headers,
+                        auth=basicAuthCredentials,
+                        timeout=1,
+                    )
+                elif endpoint == "delete":
+                    response = requests.delete(
+                        lametric_url,
+                        headers=headers,
+                        auth=basicAuthCredentials,
+                        timeout=1,
+                    )
+                if response:
+                    return json.loads(response.text)
             except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
                 print("Failed to send data to LaMetric device: ", err)
             except requests.exceptions.RequestException as err:
@@ -577,91 +609,7 @@ class MainWindow(Window):
             except requests.exceptions.ConnectionError as errc:
                 print("Error Connecting: ", errc)
             except requests.exceptions.Timeout as errt:
-                print("Timeout: ", errt)
-
-    def dismiss_notifications(self):
-        notifications = self.current_notifications()
-        for n in notifications:
-            self.delete_notification_id(int(n['id']))
-
-    def send_notification(self, events):
-        s = QSettings()
-
-        events_to_send = []
-
-        data = {
-            "priority": "info",
-            "icon_type":"none",
-            "model": {
-                "cycles": 0,
-                "frames": []
-            }
-        }
-
-        for event, text in events:
-            events_to_send.append(event)
-
-            if event == "ratings":
-                if self.checkBox_IRating.isChecked():
-                    data["model"]["frames"].append({"icon": "i43085", "text": f"{self.driver.irating:,}"})
-
-                if self.checkBox_License.isChecked():
-                    icon = Icons.ir
-                    if self.driver.license_letter == 'R':
-                        icon = Icons.license_letter_r
-                    elif self.driver.license_letter == 'D':
-                        icon = Icons.license_letter_d
-                    elif self.driver.license_letter == 'C':
-                        icon = Icons.license_letter_c
-                    elif self.driver.license_letter == 'B':
-                        icon = Icons.license_letter_b
-                    elif self.driver.license_letter == 'A':
-                        icon = Icons.license_letter_a
-                    elif self.driver.license_letter == 'P':
-                        icon = Icons.license_letter_p
-
-                    data["model"]["frames"].append({"icon": icon, "text": f"{self.driver.safety_rating}"})
-
-            else:
-                icon = getattr(Icons, event)
-                data["model"]["frames"].append({"icon": icon, "text": text})
-
-        try:
-            self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
-        except:
-            self.lametric_ip = None
-        try:
-            self.lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
-        except:
-            self.lametric_api_key = None
-
-        if self.lametric_ip and self.lametric_api_key:
-            if sorted(events_to_send) != sorted(self.state.previous_events_sent) and len( data["model"]["frames"]) > 0:
-                lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
-                headers = {"Content-Type": "application/json; charset=utf-8"}
-                basicAuthCredentials = ("dev", self.lametric_api_key)
-                self.dismiss_notifications()
-                #sleep(0.5)
-                try:
-                    response = requests.post(
-                        lametric_url,
-                        headers=headers,
-                        auth=basicAuthCredentials,
-                        json=data,
-                        timeout=1,
-                    )
-                    self.state.previous_events_sent = events_to_send
-                except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
-                    print("Failed to send data to LaMetric device: ", err)
-                except requests.exceptions.RequestException as err:
-                    print("Oops: Something Else: ", err)
-                except requests.exceptions.HTTPError as errh:
-                    print("Http Error: ", errh)
-                except requests.exceptions.ConnectionError as errc:
-                    print("Error Connecting: ", errc)
-                except requests.exceptions.Timeout as errt:
-                    print("Timeout: ", errt)
-                
+                print("Timeout: ", errt)        
 
     def show_settings(self):
         self.open_dialog()
