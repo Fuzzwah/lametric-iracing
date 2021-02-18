@@ -48,7 +48,7 @@ def ordinal(num):
 
 @dataclass
 class Driver(object):
-    """ 
+    """
     a dataclass object to collect up the information about the driver
     """
 
@@ -62,7 +62,7 @@ class Driver(object):
 
 @dataclass
 class Data(object):
-    """ 
+    """
     a dataclass object to collect up the data we need from the irsdk
     """
 
@@ -82,7 +82,7 @@ class Data(object):
 
 @dataclass
 class Icons(object):
-    """ 
+    """
     a dataclass object to pass around information regarding the icons
     """
 
@@ -125,12 +125,12 @@ class Icons(object):
 
     laps: str = '43645'
     gain_position: str = 'a43651'
-    lose_position: str = 'a43652'    
+    lose_position: str = 'a43652'
 
 
 @dataclass
 class State(object):
-    """ 
+    """
     a dataclass object to pass around information regarding the current state
     """
 
@@ -138,7 +138,9 @@ class State(object):
     car_in_world: bool = False
     last_car_setup_tick: int = -1
     previous_events_sent: list = field(default_factory=list)
+    previous_json_sent: dict = field(default_factory=dict)
     cycles_start_shown: int = 0
+    ratings_sent: bool = False
 
 
 class WorkerSignals(QObject):
@@ -149,15 +151,15 @@ class WorkerSignals(QObject):
 
     finished
         No data
-    
+
     error
         `tuple` (exctype, value, traceback.format_exc() )
-    
+
     result
         `object` data returned from processing, anything
 
     progress
-        `int` indicating % progress 
+        `int` indicating % progress
 
     '''
     finished = pyqtSignal()
@@ -172,7 +174,7 @@ class Worker(QRunnable):
 
     Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
 
-    :param callback: The function callback to run on this worker thread. Supplied args and 
+    :param callback: The function callback to run on this worker thread. Supplied args and
                      kwargs will be passed through to the runner.
     :type callback: function
     :param args: Arguments to pass to the callback function
@@ -187,17 +189,17 @@ class Worker(QRunnable):
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
-        self.signals = WorkerSignals()    
+        self.signals = WorkerSignals()
 
         # Add the callback to our kwargs
-        #self.kwargs['progress_callback'] = self.signals.progress        
+        #self.kwargs['progress_callback'] = self.signals.progress
 
     @pyqtSlot()
     def run(self):
         '''
         Initialise the runner function with passed args, kwargs.
         '''
-        
+
         # Retrieve args/kwargs here; and fire processing using them
         try:
             result = self.fn(*self.args, **self.kwargs)
@@ -245,12 +247,11 @@ class MainWindow(Window):
         self.state = State()
         self.sent_data = Data()
         self.data = Data()
-        self.notification_queue = {}
 
         self.threadpool = QThreadPool()
 
         self.timerConnectionMonitor = QTimer()
-        self.timerConnectionMonitor.setInterval(10000)
+        self.timerConnectionMonitor.setInterval(5000)
         self.timerConnectionMonitor.timeout.connect(self.irsdkConnectionMonitor)
 
         self.timerMainCycle = QTimer()
@@ -259,7 +260,7 @@ class MainWindow(Window):
 
         if self.irsdk_connection_check():
             self.irsdk_connection_controller(True)
-        
+
         self.timerConnectionMonitor.start()
 
         s = QSettings()
@@ -278,7 +279,7 @@ class MainWindow(Window):
             return True
         elif self.ir.is_initialized and self.ir.is_connected:
             return True
-             
+
     def irsdk_connection_controller(self, now_connected):
         """
         Handles the triggering of things to do when the irsdk becomes connected / disconnected to the iRacing client
@@ -287,14 +288,14 @@ class MainWindow(Window):
             self.onConnection()
         elif not now_connected and self.state.ir_connected:
             self.onDisconnection()
- 
+
     def irsdkConnectionMonitor(self):
         """
         Sets up and kicks off the worker that monitors the state of the connection to the iRacing client
         """
         monitor_worker = Worker(self.irsdk_connection_check)
         monitor_worker.signals.result.connect(self.irsdk_connection_controller)
-        
+
         self.threadpool.start(monitor_worker)
 
     def update_data(self, attr, value):
@@ -311,38 +312,42 @@ class MainWindow(Window):
         Runs on a loop that polls the iRacing client for driver data, flags, other info
         It loads the data into the data object and then the process_data function runs
         """
-        self.ir.freeze_var_buffer_latest()
-        self.update_data('position', int(self.ir['PlayerCarClassPosition']))
-        self.update_data('cars_in_class', int(len(self.ir['CarIdxClassPosition'])))
-        try:
-            minutes, seconds = divmod(float(self.ir['LapBestLapTime']), 60)
-            if seconds < 10:
-                bestlaptime = f"{minutes:.0f}:0{seconds:.3f}"
+        if not self.irsdk_connection_check():
+            self.irsdk_connection_controller(False)
+        else:
+            self.ir.freeze_var_buffer_latest()
+            if self.ir['PlayerCarClassPosition'] > 0:
+                self.update_data('position', int(self.ir['PlayerCarClassPosition']))
+            self.update_data('cars_in_class', int(len(self.ir['CarIdxClassPosition'])))
+            if self.ir['LapBestLapTime'] > 0:
+                minutes, seconds = divmod(float(self.ir['LapBestLapTime']), 60)
+                if seconds < 10:
+                    bestlaptime = f"{minutes:.0f}:0{seconds:.3f}"
+                else:
+                    bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
             else:
-                bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
-        except:
-            bestlaptime = ""
-        self.update_data('best_laptime', bestlaptime)
-        try:
-            minutes, seconds = divmod(float(self.ir['LapLastLapTime']), 60)
-            if seconds < 10:
-                lastlaptime = f"{minutes:.0f}:0{seconds:.3f}"
+                bestlaptime = None
+            self.update_data('best_laptime', bestlaptime)
+            if self.ir['LapLastLapTime'] >0:
+                minutes, seconds = divmod(float(self.ir['LapLastLapTime']), 60)
+                if seconds < 10:
+                    lastlaptime = f"{minutes:.0f}:0{seconds:.3f}"
+                else:
+                    lastlaptime = f"{minutes:.0f}:{seconds:.3f}"
             else:
-                lastlaptime = f"{minutes:.0f}:{seconds:.3f}"
-        except:
-            lastlaptime = ""
-        try:
-            time_left = timedelta(seconds=int(self.ir['SessionTimeRemain']))
-        except:
-            time_left = ""
-        self.update_data('last_laptime', lastlaptime)
-        self.update_data('fuel_left', self.ir['FuelLevel'])
-        self.update_data('laps', int(self.ir['LapCompleted']))
-        self.update_data('laps_left', int(self.ir['SessionLapsRemainEx']))
-        self.update_data('laps_total', int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx']))
-        self.update_data('time_left', str(time_left))
-        self.update_data('flags', int(self.ir['SessionFlags']))
-        self.ir.unfreeze_var_buffer_latest()
+                lastlaptime = None
+            try:
+                time_left = timedelta(seconds=int(self.ir['SessionTimeRemain']))
+            except:
+                time_left = ""
+            self.update_data('last_laptime', lastlaptime)
+            self.update_data('fuel_left', self.ir['FuelLevel'])
+            self.update_data('laps', int(self.ir['LapCompleted']))
+            self.update_data('laps_left', int(self.ir['SessionLapsRemainEx']))
+            self.update_data('laps_total', int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx']))
+            self.update_data('time_left', str(time_left))
+            self.update_data('flags', int(self.ir['SessionFlags']))
+            self.ir.unfreeze_var_buffer_latest()
 
     def process_data(self):
         """
@@ -355,25 +360,31 @@ class MainWindow(Window):
         if self.lineEdit_BestLap.text() != self.data.best_laptime:
             self.lineEdit_BestLap.setText(self.data.best_laptime)
 
-        if self.lineEdit_Position.text() != f"{ordinal(self.data.position)} / {self.data.cars_in_class}":
-            self.lineEdit_Position.setText(f"{ordinal(self.data.position)} / {self.data.cars_in_class}")
-            
-        if self.lineEdit_LastLap.text() != self.data.last_laptime:
-            self.lineEdit_LastLap.setText(self.data.last_laptime)
+        if self.data.position:
+            if self.lineEdit_Position.text() != f"{ordinal(self.data.position)} / {self.data.cars_in_class}":
+                self.lineEdit_Position.setText(f"{ordinal(self.data.position)} / {self.data.cars_in_class}")
 
-        if self.lineEdit_Laps.text() != f"{self.data.laps}":
-            self.lineEdit_Laps.setText(f"{self.data.laps}")
+        if self.data.last_laptime:
+            if self.lineEdit_LastLap.text() != self.data.last_laptime:
+                self.lineEdit_LastLap.setText(self.data.last_laptime)
 
-        if self.lineEdit_TimeLeft.text() != f"{self.data.time_left}":
-            self.lineEdit_TimeLeft.setText(f"{self.data.time_left}")
+        if self.data.laps:
+            if self.lineEdit_Laps.text() != f"{self.data.laps}":
+                self.lineEdit_Laps.setText(f"{self.data.laps}")
 
-        if self.lineEdit_FuelLeft.text() != f"{self.data.fuel_left:.2f} L":
-            self.lineEdit_FuelLeft.setText(f"{self.data.fuel_left:.2f} L")
+        if self.data.time_left:
+            if self.lineEdit_TimeLeft.text() != f"{self.data.time_left}":
+                self.lineEdit_TimeLeft.setText(f"{self.data.time_left}")
 
-        if self.lineEdit_LapsLeft.text() != f"{self.data.laps_left}":
-            if self.data.laps_left == 32767.0:
-                self.data.laps_left = "∞"
-            self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")        
+        if self.data.fuel_left:
+            if self.lineEdit_FuelLeft.text() != f"{self.data.fuel_left:.2f} L":
+                self.lineEdit_FuelLeft.setText(f"{self.data.fuel_left:.2f} L")
+
+        if self.data.laps_left:
+            if self.lineEdit_LapsLeft.text() != f"{self.data.laps_left}":
+                if self.data.laps_left == 32767.0:
+                    self.data.laps_left = "∞"
+                self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and self.state.cycles_start_shown < 20:
             self.state.cycles_start_shown += 1
@@ -459,17 +470,18 @@ class MainWindow(Window):
             flag =True
             events.append(["repair", "Damage"])
 
-        if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime and self.data.best_laptime != "0:0.000":
+        if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime and self.data.best_laptime:
             self.lineEdit_BestLap.setText(self.data.best_laptime)
-            events.append(["purple", self.data.best_laptime])            
+            events.append(["purple", self.data.best_laptime])
 
-        if self.checkBox_Position.isChecked() and not flag and self.sent_data.position != self.data.position and self.data.position != 0:
-            self.lineEdit_Position.setText(f"{ordinal(self.data.position)} / {self.data.cars_in_class}")
-            event = "gain_position"
-            if self.sent_data.position:
-                if self.sent_data.position < self.data.position:
-                    event = "lose_position"
-            events.append([event, f"{self.data.position} / {self.data.cars_in_class}"])
+        if self.data.position:
+            if self.checkBox_Position.isChecked() and not flag and self.sent_data.position != self.data.position:
+                self.lineEdit_Position.setText(f"{ordinal(self.data.position)} / {self.data.cars_in_class}")
+                event = "gain_position"
+                if self.sent_data.position:
+                    if self.sent_data.position < self.data.position:
+                        event = "lose_position"
+                events.append([event, f"{self.data.position} / {self.data.cars_in_class}"])
 
         if self.checkBox_Laps.isChecked() and not flag and self.sent_data.laps != self.data.laps and self.data.laps > 0:
             self.lineEdit_Laps.setText(f"{self.data.laps}")
@@ -492,7 +504,7 @@ class MainWindow(Window):
         """
         main_cycle_worker = Worker(self.data_collection_cycle)
         main_cycle_worker.signals.result.connect(self.process_data)
-        
+
         self.threadpool.start(main_cycle_worker)
 
     def onConnection(self):
@@ -547,30 +559,31 @@ class MainWindow(Window):
         """
         A wrapper that builds the events list containing iRating and License / SR info, and triggers the notification send
         """
-        events = []
+        if not self.state.ratings_sent:
+            events = []
 
-        if self.checkBox_IRating.isChecked():
-            events.append(["ir", f"{self.driver.irating:,}"])
+            if self.checkBox_IRating.isChecked():
+                events.append(["ir", f"{self.driver.irating:,}"])
 
-        if self.checkBox_License.isChecked():
-            icon = "ir"
-            if self.driver.license_letter == 'R':
-                icon = "license_letter_r"
-            elif self.driver.license_letter == 'D':
-                icon = "license_letter_d"
-            elif self.driver.license_letter == 'C':
-                icon = "license_letter_c"
-            elif self.driver.license_letter == 'B':
-                icon = "license_letter_b"
-            elif self.driver.license_letter == 'A':
-                icon = "license_letter_a"
-            elif self.driver.license_letter == 'P':
-                icon = "license_letter_p"
-            
-            events.append([icon, f"{self.driver.safety_rating}"])
+            if self.checkBox_License.isChecked():
+                icon = "ir"
+                if self.driver.license_letter == 'R':
+                    icon = "license_letter_r"
+                elif self.driver.license_letter == 'D':
+                    icon = "license_letter_d"
+                elif self.driver.license_letter == 'C':
+                    icon = "license_letter_c"
+                elif self.driver.license_letter == 'B':
+                    icon = "license_letter_b"
+                elif self.driver.license_letter == 'A':
+                    icon = "license_letter_a"
+                elif self.driver.license_letter == 'P':
+                    icon = "license_letter_p"
 
-        if len(events) > 0:
-            self.send_notification(events, priority="info")
+                events.append([icon, f"{self.driver.safety_rating}"])
+
+            if len(events) > 0:
+                self.send_notification(events, priority="info", ratings=True)
 
     def dismiss_notifications(self, level):
         """
@@ -585,7 +598,7 @@ class MainWindow(Window):
             if dismiss:
                 self.call_lametric_api("delete", id=int(n['id']))
 
-    def send_notification(self, events, priority="warning", cycles=0):
+    def send_notification(self, events, priority="warning", cycles=0, ratings=False):
         """
         Accepts a list of events and packages them up into json and triggers the sending of a notification via LaMetic API
         """
@@ -601,15 +614,20 @@ class MainWindow(Window):
         }
 
         for event, text in events:
-            events_to_send.append(event)
+            events_to_send.append((event, text))
             icon = getattr(Icons, event)
             data["model"]["frames"].append({"icon": icon, "text": text})
 
         if sorted(events_to_send) != sorted(self.state.previous_events_sent):
             #self.dismiss_notifications("warning")
             if len(data["model"]["frames"]) > 0:
+                if ratings:
+                    self.state.ratings_sent = True
+                else:
+                    self.state.ratings_sent = False
                 self.call_lametric_api("send", data=data)
             self.state.previous_events_sent = events_to_send
+            self.state.previous_json_sent = data
 
     def call_lametric_api(self, endpoint, data=None, id=None):
         """
@@ -666,7 +684,7 @@ class MainWindow(Window):
             except requests.exceptions.ConnectionError as errc:
                 print("Error Connecting: ", errc)
             except requests.exceptions.Timeout as errt:
-                print("Timeout: ", errt)        
+                print("Timeout: ", errt)
 
     def show_settings(self):
         """
@@ -693,7 +711,8 @@ class MainWindow(Window):
         """
         What to do when the test button is clicked
         """
-        pprint(self.notification_queue())
+        pprint(self.state.previous_events_sent)
+        pprint(self.state.previous_json_sent)
 
     def closeEvent(self, e):
         """
