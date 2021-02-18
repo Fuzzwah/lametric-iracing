@@ -137,8 +137,8 @@ class State(object):
     ir_connected: bool = False
     car_in_world: bool = False
     last_car_setup_tick: int = -1
-    start_shown_cycles: int = 0
     previous_events_sent: list = field(default_factory=list)
+    cycles_start_shown: int = 0
 
 
 class WorkerSignals(QObject):
@@ -369,8 +369,8 @@ class MainWindow(Window):
                 self.data.laps_left = "∞"
             self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")        
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and self.state.start_shown_cycles < 20:
-            self.state.start_shown_cycles += 1
+        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and self.state.cycles_start_shown < 20:
+            self.state.cycles_start_shown += 1
             flag =True
             events.append(["start_hidden", "Start"])
 
@@ -475,7 +475,11 @@ class MainWindow(Window):
             self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")
             events.append(['laps', f"{self.data.laps} / {laps_total}"])
 
-        self.send_notification(events)
+        if len(events) > 0:
+            if not flag:
+                self.send_notification(events)
+            else:
+                self.send_notification(events, cycles=2)
 
     def main_cycle(self):
         """
@@ -576,7 +580,7 @@ class MainWindow(Window):
             if dismiss:
                 self.call_lametric_api("delete", id=int(n['id']))
 
-    def send_notification(self, events, priority="warning"):
+    def send_notification(self, events, priority="warning", cycles=0):
         """
         Accepts a list of events and packages them up into json and triggers the sending of a notification via LaMetic API
         """
@@ -586,7 +590,7 @@ class MainWindow(Window):
             "priority": priority,
             "icon_type":"none",
             "model": {
-                "cycles": 0,
+                "cycles": cycles,
                 "frames": []
             }
         }
