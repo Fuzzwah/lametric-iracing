@@ -494,9 +494,11 @@ class MainWindow(Window):
 
         if len(events) > 0:
             if flag:
-                self.send_notification(events)
+                self.send_notification(events, priority="warning")
             else:
                 self.send_notification(events, cycles=2)
+        else:
+            self.send_ratings()
 
     def main_cycle(self):
         """
@@ -583,7 +585,7 @@ class MainWindow(Window):
                 events.append([icon, f"{self.driver.safety_rating}"])
 
             if len(events) > 0:
-                self.send_notification(events, priority="info", ratings=True)
+                self.send_notification(events, ratings=True)
 
     def dismiss_notifications(self, level):
         """
@@ -598,7 +600,7 @@ class MainWindow(Window):
             if dismiss:
                 self.call_lametric_api("delete", id=int(n['id']))
 
-    def send_notification(self, events, priority="warning", cycles=0, ratings=False):
+    def send_notification(self, events, priority="info", cycles=0, ratings=False):
         """
         Accepts a list of events and packages them up into json and triggers the sending of a notification via LaMetic API
         """
