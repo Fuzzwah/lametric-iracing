@@ -316,13 +316,19 @@ class MainWindow(Window):
         self.update_data('cars_in_class', int(len(self.ir['CarIdxClassPosition'])))
         try:
             minutes, seconds = divmod(float(self.ir['LapBestLapTime']), 60)
-            bestlaptime = f"{minutes:.0f}:{seconds:02.3f}"
+            if seconds < 10:
+                bestlaptime = f"{minutes:.0f}:0{seconds:.3f}"
+            else:
+                bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
         except:
             bestlaptime = ""
         self.update_data('best_laptime', bestlaptime)
         try:
             minutes, seconds = divmod(float(self.ir['LapLastLapTime']), 60)
-            lastlaptime = f"{minutes:.0f}:{seconds:02.3f}"
+            if seconds < 10:
+                lastlaptime = f"{minutes:.0f}:0{seconds:.3f}"
+            else:
+                lastlaptime = f"{minutes:.0f}:{seconds:.3f}"
         except:
             lastlaptime = ""
         try:
@@ -371,7 +377,6 @@ class MainWindow(Window):
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and self.state.cycles_start_shown < 20:
             self.state.cycles_start_shown += 1
-            flag =True
             events.append(["start_hidden", "Start"])
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.checkered:
@@ -464,7 +469,7 @@ class MainWindow(Window):
             if self.sent_data.position:
                 if self.sent_data.position < self.data.position:
                     event = "lose_position"
-            events.append([event, f"{ordinal(self.data.position)}/{self.data.cars_in_class}"])
+            events.append([event, f"{self.data.position} / {self.data.cars_in_class}"])
 
         if self.checkBox_Laps.isChecked() and not flag and self.sent_data.laps != self.data.laps and self.data.laps > 0:
             self.lineEdit_Laps.setText(f"{self.data.laps}")
@@ -476,7 +481,7 @@ class MainWindow(Window):
             events.append(['laps', f"{self.data.laps} / {laps_total}"])
 
         if len(events) > 0:
-            if not flag:
+            if flag:
                 self.send_notification(events)
             else:
                 self.send_notification(events, cycles=2)
