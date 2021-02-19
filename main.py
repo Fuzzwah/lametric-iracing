@@ -215,7 +215,7 @@ class Worker(QRunnable):
 
 class MainWindow(Window):
     def __init__(self):
-        super().__init__("ui/MainWindow.ui")
+        super().__init__("ui/MainWindow_new.ui")
 
         self.dialog: Optional[SettingsDialog] = None
 
@@ -234,13 +234,7 @@ class MainWindow(Window):
         self.register_widget(self.checkBox_License, default=True)
         self.register_widget(self.checkBox_Position, default=True)
         self.register_widget(self.checkBox_Laps, default=True)
-        self.register_widget(self.checkBox_LapsLeft, default=True)
-
-        self.register_widget(self.checkBox_LastLap, default=True)
         self.register_widget(self.checkBox_BestLap, default=True)
-        self.register_widget(self.checkBox_FuelPerLap, default=True)
-        self.register_widget(self.checkBox_FuelLeft, default=True)
-        self.register_widget(self.checkBox_TimeLeft, default=True)
         self.register_widget(self.checkBox_Flags, default=True)
 
         self.ir = IRSDK()
@@ -317,35 +311,20 @@ class MainWindow(Window):
         else:
             self.ir.freeze_var_buffer_latest()
             if self.ir['PlayerCarClassPosition'] > 0:
-                self.update_data('position', int(self.ir['PlayerCarClassPosition']))
-            self.update_data('cars_in_class', int(len(self.ir['CarIdxClassPosition'])))
+                self.update_data('position', f"{int(self.ir['PlayerCarClassPosition'])} / {int(len(self.ir['CarIdxClassPosition']))}")
             if self.ir['LapBestLapTime'] > 0:
                 minutes, seconds = divmod(float(self.ir['LapBestLapTime']), 60)
                 if seconds < 10:
                     bestlaptime = f"{minutes:.0f}:0{seconds:.3f}"
                 else:
                     bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
-            else:
-                bestlaptime = None
-            self.update_data('best_laptime', bestlaptime)
-            if self.ir['LapLastLapTime'] >0:
-                minutes, seconds = divmod(float(self.ir['LapLastLapTime']), 60)
-                if seconds < 10:
-                    lastlaptime = f"{minutes:.0f}:0{seconds:.3f}"
+                self.update_data('best_laptime', bestlaptime)
+            if int(self.ir['LapCompleted']) > 0:
+                if int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx']) > 32000:
+                    laps_total = "∞"
                 else:
-                    lastlaptime = f"{minutes:.0f}:{seconds:.3f}"
-            else:
-                lastlaptime = None
-            try:
-                time_left = timedelta(seconds=int(self.ir['SessionTimeRemain']))
-            except:
-                time_left = ""
-            self.update_data('last_laptime', lastlaptime)
-            self.update_data('fuel_left', self.ir['FuelLevel'])
-            self.update_data('laps', int(self.ir['LapCompleted']))
-            self.update_data('laps_left', int(self.ir['SessionLapsRemainEx']))
-            self.update_data('laps_total', int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx']))
-            self.update_data('time_left', str(time_left))
+                    laps_total = int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx'])
+                self.update_data('laps', f"{int(self.ir['LapCompleted'])} / {laps_total}")
             self.update_data('flags', int(self.ir['SessionFlags']))
             self.ir.unfreeze_var_buffer_latest()
 
@@ -356,35 +335,6 @@ class MainWindow(Window):
         """
         events = []
         flag = False
-
-        if self.lineEdit_BestLap.text() != self.data.best_laptime:
-            self.lineEdit_BestLap.setText(self.data.best_laptime)
-
-        if self.data.position:
-            if self.lineEdit_Position.text() != f"{ordinal(self.data.position)} / {self.data.cars_in_class}":
-                self.lineEdit_Position.setText(f"{ordinal(self.data.position)} / {self.data.cars_in_class}")
-
-        if self.data.last_laptime:
-            if self.lineEdit_LastLap.text() != self.data.last_laptime:
-                self.lineEdit_LastLap.setText(self.data.last_laptime)
-
-        if self.data.laps:
-            if self.lineEdit_Laps.text() != f"{self.data.laps}":
-                self.lineEdit_Laps.setText(f"{self.data.laps}")
-
-        if self.data.time_left:
-            if self.lineEdit_TimeLeft.text() != f"{self.data.time_left}":
-                self.lineEdit_TimeLeft.setText(f"{self.data.time_left}")
-
-        if self.data.fuel_left:
-            if self.lineEdit_FuelLeft.text() != f"{self.data.fuel_left:.2f} L":
-                self.lineEdit_FuelLeft.setText(f"{self.data.fuel_left:.2f} L")
-
-        if self.data.laps_left:
-            if self.lineEdit_LapsLeft.text() != f"{self.data.laps_left}":
-                if self.data.laps_left == 32767.0:
-                    self.data.laps_left = "∞"
-                self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and self.state.cycles_start_shown < 20:
             self.state.cycles_start_shown += 1
@@ -470,27 +420,24 @@ class MainWindow(Window):
             flag =True
             events.append(["repair", "Damage"])
 
-        if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime and self.data.best_laptime:
-            self.lineEdit_BestLap.setText(self.data.best_laptime)
-            events.append(["purple", self.data.best_laptime])
+        if self.data.best_laptime:
+            if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime and self.data.best_laptime:
+                self.lineEdit_BestLap.setText(self.data.best_laptime)
+                events.append(["purple", self.data.best_laptime])
 
         if self.data.position:
             if self.checkBox_Position.isChecked() and not flag and self.sent_data.position != self.data.position:
-                self.lineEdit_Position.setText(f"{ordinal(self.data.position)} / {self.data.cars_in_class}")
+                self.lineEdit_Position.setText(f"{self.data.position}")
                 event = "gain_position"
                 if self.sent_data.position:
                     if self.sent_data.position < self.data.position:
                         event = "lose_position"
-                events.append([event, f"{self.data.position} / {self.data.cars_in_class}"])
+                events.append([event, f"{self.data.position}"])
 
-        if self.checkBox_Laps.isChecked() and not flag and self.sent_data.laps != self.data.laps and self.data.laps > 0:
-            self.lineEdit_Laps.setText(f"{self.data.laps}")
-            if self.data.laps_total > 32000:
-                laps_total = "∞"
-            else:
-                laps_total = self.data.laps_total
-            self.lineEdit_LapsLeft.setText(f"{self.data.laps_left}")
-            events.append(['laps', f"{self.data.laps} / {laps_total}"])
+        if self.data.laps:
+            if self.checkBox_Laps.isChecked() and not flag and self.sent_data.laps != self.data.laps:
+                self.lineEdit_Laps.setText(f"{self.data.laps}")
+                events.append(['laps', f"{self.data.laps}"])
 
         if len(events) > 0:
             if flag:
