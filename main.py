@@ -497,8 +497,6 @@ class MainWindow(Window):
                 self.send_notification(events, priority="warning")
             else:
                 self.send_notification(events, cycles=2)
-        else:
-            self.send_ratings()
 
     def main_cycle(self):
         """
