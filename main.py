@@ -219,6 +219,9 @@ class MainWindow(Window):
     def __init__(self):
         super().__init__("ui/MainWindow_new.ui")
 
+        self.setFixedWidth(400)
+        self.setFixedHeight(140)
+
         self.dialog: Optional[SettingsDialog] = None
 
         mnu = self.actionSettings
@@ -504,7 +507,6 @@ class MainWindow(Window):
 
                 break
 
-        self.lineEdit_Name.setText(self.driver.name)
         self.lineEdit_IRating.setText(f"{self.driver.irating:,}")
         self.lineEdit_License.setText(self.driver.license_string)
 
@@ -682,8 +684,7 @@ class MainWindow(Window):
         What to do when the test button is clicked
         """
 
-        for i in range(10):
-            pprint(self.state)
+        pprint(self.state)
 
 
     def closeEvent(self, e):
