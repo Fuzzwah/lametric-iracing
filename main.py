@@ -388,106 +388,148 @@ class MainWindow(Window):
             self.state.cycles_start_shown += 1
             events.append(["start_hidden", "Start"])
             print(f"start_hidden: {self.data.flags} - {Flags.start_hidden}")
+        elif self.notification_ids.start_hidden:
+            self.dismiss_notification(self.notification_ids.start_hidden)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.checkered:
             flag =True
             events.append(["checkered", "Finish"])
             print(f"checkered: {self.data.flags} - {Flags.checkered}")
+        elif self.notification_ids.checkered:
+            self.dismiss_notification(self.notification_ids.checkered)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.white:
             flag =True
             events.append(["white", "White"])
             print(f"white: {self.data.flags} - {Flags.white}")
+        elif self.notification_ids.white:
+            self.dismiss_notification(self.notification_ids.white)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green:
             flag =True
             events.append(["green", "Green"])
             print(f"green: {self.data.flags} - {Flags.green}")
+        elif self.notification_ids.green:
+            self.dismiss_notification(self.notification_ids.green)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow:
             flag =True
             events.append(["yellow", "Yellow"])
             print(f"yellow: {self.data.flags} - {Flags.yellow}")
+        elif self.notification_ids.yellow:
+            self.dismiss_notification(self.notification_ids.yellow)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.red:
             flag =True
             events.append(["red", "Red"])
             print(f"red: {self.data.flags} - {Flags.red}")
+        elif self.notification_ids.red:
+            self.dismiss_notification(self.notification_ids.red)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.blue:
             flag =True
             events.append(["blue", "Blue"])
             print(f"blue: {self.data.flags} - {Flags.blue}")
+        elif self.notification_ids.blue:
+            self.dismiss_notification(self.notification_ids.blue)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.debris:
             flag =True
             events.append(["debris", "Debris"])
             print(f"debris: {self.data.flags} - {Flags.debris}")
+        elif self.notification_ids.debris:
+            self.dismiss_notification(self.notification_ids.debris)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.crossed:
             flag =True
             events.append(["crossed", "Crossed"])
             print(f"crossed: {self.data.flags} - {Flags.crossed}")
+        elif self.notification_ids.crossed:
+            self.dismiss_notification(self.notification_ids.crossed)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow_waving:
             flag =True
             events.append(["yellow_waving", "Yellow"])
             print(f"yellow_waving: {self.data.flags} - {Flags.yellow_waving}")
+        elif self.notification_ids.yellow_waving:
+            self.dismiss_notification(self.notification_ids.yellow_waving)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.one_lap_to_green:
             flag =True
             events.append(["one_lap_to_green", "1 to Green"])
             print(f"one_lap_to_green: {self.data.flags} - {Flags.one_lap_to_green}")
+        elif self.notification_ids.one_lap_to_green:
+            self.dismiss_notification(self.notification_ids.one_lap_to_green)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green_held:
             flag =True
             events.append(["green_held", "Green"])
             print(f"green_held: {self.data.flags} - {Flags.green_held}")
+        elif self.notification_ids.green_held:
+            self.dismiss_notification(self.notification_ids.green_held)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.ten_to_go:
             flag =True
             events.append(["ten_to_go", "10 to go"])
             print(f"ten_to_go: {self.data.flags} - {Flags.ten_to_go}")
+        elif self.notification_ids.ten_to_go:
+            self.dismiss_notification(self.notification_ids.ten_to_go)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.five_to_go:
             flag =True
             events.append(["five_to_go", "5 to go"])
             print(f"five_to_go: {self.data.flags} - {Flags.five_to_go}")
+        elif self.notification_ids.five_to_go:
+            self.dismiss_notification(self.notification_ids.five_to_go)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.random_waving:
             flag =True
             events.append(["random_waving", "Random"])
             print(f"random_waving: {self.data.flags} - {Flags.random_waving}")
+        elif self.notification_ids.random_waving:
+            self.dismiss_notification(self.notification_ids.random_waving)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution:
             flag =True
             events.append(["caution", "Caution"])
             print(f"caution: {self.data.flags} - {Flags.caution}")
+        elif self.notification_ids.caution:
+            self.dismiss_notification(self.notification_ids.caution)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution_waving:
             flag =True
             events.append(["caution_waving", "Caution"])
             print(f"caution_waving: {self.data.flags} - {Flags.caution_waving}")
+        elif self.notification_ids.caution_waving:
+            self.dismiss_notification(self.notification_ids.caution_waving)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.black:
             flag =True
             events.append(["black", "Black"])
             print(f"black: {self.data.flags} - {Flags.black}")
+        elif self.notification_ids.black:
+            self.dismiss_notification(self.notification_ids.black)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.disqualify:
             flag =True
             events.append(["disqualify", "DQ"])
             print(f"disqualify: {self.data.flags} - {Flags.disqualify}")
+        elif self.notification_ids.disqualify:
+            self.dismiss_notification(self.notification_ids.disqualify)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.furled:
             flag =True
             events.append(["furled", "Warning"])
             print(f"furled: {self.data.flags} - {Flags.furled}")
+        elif self.notification_ids.furled:
+            self.dismiss_notification(self.notification_ids.furled)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.repair:
             flag =True
             events.append(["repair", "Damage"])
             print(f"repair: {self.data.flags} - {Flags.repair}")
+        elif self.notification_ids.repair:
+            self.dismiss_notification(self.notification_ids.repair)
 
         if self.data.best_laptime:
             if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime and self.data.best_laptime:
@@ -600,18 +642,12 @@ class MainWindow(Window):
             if len(events) > 0:
                 self.send_notification(events, ratings=True)
 
-    def dismiss_notifications(self, level):
+    def dismiss_notification(self, notification_id):
         """
-        Dismisses notifications, can be limited to only dismissing those with a priority of warning
+        Dismisses a notification
         """
-        notifications = self.call_lametric_api("queue")
-        for n in notifications:
-            dismiss = True
-            if level == "warning":
-                if n['priority'] != 'warning':
-                    dismiss = False
-            if dismiss:
-                self.call_lametric_api("delete", id=int(n['id']))
+        res = self.call_lametric_api("delete", notification_id=notification_id)
+        print(res)
 
     def send_notification(self, events, priority="info", cycles=0, ratings=False):
         """
@@ -640,11 +676,18 @@ class MainWindow(Window):
                     self.state.ratings_sent = True
                 else:
                     self.state.ratings_sent = False
-                self.call_lametric_api("send", data=data)
+                res = self.call_lametric_api("send", data=data)
+                try:
+                    notification_id = res['success']['id']
+                except KeyError:
+                    notification_id = None
+                for event, text in events_to_send:
+                    self.update_notification_ids(event, notification_id)
                 self.state.previous_events_sent = events_to_send
                 self.state.previous_json_sent = data
+                print(self.notification_ids)
 
-    def call_lametric_api(self, endpoint, data=None, id=None):
+    def call_lametric_api(self, endpoint, data=None, notification_id=None):
         """
         The function that handles all interactions (send, list queue, delete from queue) with the LaMetric clock via API calls
         """
@@ -661,7 +704,7 @@ class MainWindow(Window):
         if self.lametric_ip and self.lametric_api_key:
             lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
             if endpoint == "delete":
-                lametric_url = f"{lametric_url}/{id}"
+                lametric_url = f"{lametric_url}/{notification_id}"
             headers = {"Content-Type": "application/json; charset=utf-8"}
             basicAuthCredentials = ("dev", self.lametric_api_key)
             try:
@@ -689,7 +732,6 @@ class MainWindow(Window):
                         timeout=1,
                     )
                 if response:
-                    pprint(response.text)
                     return json.loads(response.text)
             except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
                 print("Failed to send data to LaMetric device: ", err)
