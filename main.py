@@ -145,6 +145,39 @@ class State(object):
     ratings_sent: bool = False
 
 
+@dataclass
+class NotificationIDS(object):
+    """
+    a dataclass object to track the notifcation ids for each event
+    """
+
+    ratings: int = None
+    position: int = None
+    laps: int = None
+    best_laptime: int = None
+    start_hidden: int = None
+    checkered: int = None
+    white: int = None
+    green: int = None
+    yellow: int = None
+    yellow_waving: int = None
+    red: int = None
+    blue: int = None
+    debris: int = None
+    green_held: int = None
+    random_waving: int = None
+    caution: int = None
+    caution_waving: int = None
+    black: int = None
+    disqualify: int = None
+    furled: int = None
+    repair: int = None
+    crossed: int = None
+    one_lap_to_green: int = None
+    ten_to_go: int = None
+    five_to_go: int = None
+
+
 class WorkerSignals(QObject):
     '''
     Defines the signals available from a running worker thread.
@@ -246,6 +279,7 @@ class MainWindow(Window):
         self.state = State()
         self.sent_data = Data()
         self.data = Data()
+        self.notification_ids = NotificationIDS()
 
         self.threadpool = QThreadPool()
 
@@ -305,6 +339,15 @@ class MainWindow(Window):
             setattr(self.data, attr, value)
         except KeyError:
             setattr(self.data, attr, None)
+
+    def update_notification_ids(self, attr, value):
+        """
+        A little wrapper to handle notification_ids object to keep track of which notification id's hold each event
+        """
+        try:
+            setattr(self.notification_ids, attr, value)
+        except KeyError:
+            setattr(self.notification_ids, attr, None)
 
     def data_collection_cycle(self):
         """
@@ -598,8 +641,8 @@ class MainWindow(Window):
                 else:
                     self.state.ratings_sent = False
                 self.call_lametric_api("send", data=data)
-            self.state.previous_events_sent = events_to_send
-            self.state.previous_json_sent = data
+                self.state.previous_events_sent = events_to_send
+                self.state.previous_json_sent = data
 
     def call_lametric_api(self, endpoint, data=None, id=None):
         """
@@ -646,6 +689,7 @@ class MainWindow(Window):
                         timeout=1,
                     )
                 if response:
+                    pprint(response.text)
                     return json.loads(response.text)
             except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
                 print("Failed to send data to LaMetric device: ", err)
