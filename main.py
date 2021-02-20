@@ -87,6 +87,8 @@ class Icons(object):
     """
 
     ir: str = 'i43085'
+    green_tick: str = 'a43780'
+    spinner: str = 'a7660'
 
     # flags
     start_hidden: str = 'a43445'
@@ -339,86 +341,107 @@ class MainWindow(Window):
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and self.state.cycles_start_shown < 20:
             self.state.cycles_start_shown += 1
             events.append(["start_hidden", "Start"])
+            print(f"start_hidden: {self.data.flags} - {Flags.start_hidden}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.checkered:
             flag =True
             events.append(["checkered", "Finish"])
+            print(f"checkered: {self.data.flags} - {Flags.checkered}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.white:
             flag =True
             events.append(["white", "White"])
+            print(f"white: {self.data.flags} - {Flags.white}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green:
             flag =True
             events.append(["green", "Green"])
+            print(f"green: {self.data.flags} - {Flags.green}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow:
             flag =True
             events.append(["yellow", "Yellow"])
+            print(f"yellow: {self.data.flags} - {Flags.yellow}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.red:
             flag =True
             events.append(["red", "Red"])
+            print(f"red: {self.data.flags} - {Flags.red}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.blue:
             flag =True
             events.append(["blue", "Blue"])
+            print(f"blue: {self.data.flags} - {Flags.blue}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.debris:
             flag =True
             events.append(["debris", "Debris"])
+            print(f"debris: {self.data.flags} - {Flags.debris}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.crossed:
             flag =True
             events.append(["crossed", "Crossed"])
+            print(f"crossed: {self.data.flags} - {Flags.crossed}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow_waving:
             flag =True
             events.append(["yellow_waving", "Yellow"])
+            print(f"yellow_waving: {self.data.flags} - {Flags.yellow_waving}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.one_lap_to_green:
             flag =True
             events.append(["one_lap_to_green", "1 to Green"])
+            print(f"one_lap_to_green: {self.data.flags} - {Flags.one_lap_to_green}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green_held:
             flag =True
             events.append(["green_held", "Green"])
+            print(f"green_held: {self.data.flags} - {Flags.green_held}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.ten_to_go:
             flag =True
             events.append(["ten_to_go", "10 to go"])
+            print(f"ten_to_go: {self.data.flags} - {Flags.ten_to_go}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.five_to_go:
             flag =True
             events.append(["five_to_go", "5 to go"])
+            print(f"five_to_go: {self.data.flags} - {Flags.five_to_go}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.random_waving:
             flag =True
             events.append(["random_waving", "Random"])
+            print(f"random_waving: {self.data.flags} - {Flags.random_waving}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution:
             flag =True
             events.append(["caution", "Caution"])
+            print(f"caution: {self.data.flags} - {Flags.caution}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution_waving:
             flag =True
             events.append(["caution_waving", "Caution"])
+            print(f"caution_waving: {self.data.flags} - {Flags.caution_waving}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.black:
             flag =True
             events.append(["black", "Black"])
+            print(f"black: {self.data.flags} - {Flags.black}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.disqualify:
             flag =True
             events.append(["disqualify", "DQ"])
+            print(f"disqualify: {self.data.flags} - {Flags.disqualify}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.furled:
             flag =True
             events.append(["furled", "Warning"])
+            print(f"furled: {self.data.flags} - {Flags.furled}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.repair:
             flag =True
             events.append(["repair", "Damage"])
+            print(f"repair: {self.data.flags} - {Flags.repair}")
 
         if self.data.best_laptime:
             if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime and self.data.best_laptime:
@@ -658,8 +681,10 @@ class MainWindow(Window):
         """
         What to do when the test button is clicked
         """
-        pprint(self.state.previous_events_sent)
-        pprint(self.state.previous_json_sent)
+
+        for i in range(10):
+            pprint(self.state)
+
 
     def closeEvent(self, e):
         """
