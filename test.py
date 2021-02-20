@@ -158,8 +158,38 @@ class App(object):
 
         if response:
             return json.loads(response.text)
+        else:
+            return False
 
-        return None
+
+    def dismiss_nofitication(self, notification_id):
+
+        lametric_url = f"http://{self.args.ip}:8080/api/v2/device/notifications/{notification_id}"
+        headers = {"Content-Type": "application/json; charset=utf-8"}
+        basicAuthCredentials = ("dev", self.args.key)
+
+        try:
+            response = requests.delete(
+                lametric_url,
+                headers=headers,
+                auth=basicAuthCredentials,
+                timeout=1,
+            )
+        except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
+            print("Failed to send data to LaMetric device: ", err)
+        except requests.exceptions.RequestException as err:
+            print("Oops: Something Else: ", err)
+        except requests.exceptions.HTTPError as errh:
+            print("Http Error: ", errh)
+        except requests.exceptions.ConnectionError as errc:
+            print("Error Connecting: ", errc)
+        except requests.exceptions.Timeout as errt:
+            print("Timeout: ", errt)
+
+        if response:
+            return json.loads(response.text)
+        else:
+            return False
 
 
 def parse_args(argv):
