@@ -18,7 +18,7 @@
     <rect>
      <x>-1</x>
      <y>109</y>
-     <width>521</width>
+     <width>510</width>
      <height>32</height>
     </rect>
    </property>
@@ -40,7 +40,7 @@
     <rect>
      <x>-1</x>
      <y>-1</y>
-     <width>1096</width>
+     <width>510</width>
      <height>111</height>
     </rect>
    </property>
@@ -86,6 +86,16 @@
           <width>400</width>
           <height>0</height>
          </size>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0" colspan="2">
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>You can find out the API Key here: &lt;a href='https://developer.lametric.com/user/devices'&gt;https://developer.lametric.com/user/devices&lt;/a&gt;</string>
+        </property>
+        <property name="openExternalLinks">
+         <bool>true</bool>
         </property>
        </widget>
       </item>

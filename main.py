@@ -260,7 +260,7 @@ class MainWindow(Window):
         self.timerConnectionMonitor.start()
 
         s = QSettings()
-        #s.clear()
+        s.clear()
         #pprint(s.allKeys())
 
     # here we check if we are connected to iracing
