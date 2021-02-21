@@ -53,9 +53,34 @@ import json
 from pprint import pprint
 from time import sleep
 from random import choice
+from dataclasses import dataclass
 
+from dataclasses_json import dataclass_json
 import requests
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
+
+
+@dataclass_json
+@dataclass
+class Frame:
+    icon: str
+    text: str
+
+
+@dataclass_json
+@dataclass
+class Model:
+    cycles: int
+    frames: list[Frame]
+
+
+@dataclass_json
+@dataclass
+class Notification:
+    priority: str
+    icon_type: str
+    model: Model
+
 
 class App(object):
     """ The main class of your application
@@ -70,13 +95,14 @@ class App(object):
         if self.args.debug:
             print(self.version)
 
-        self.previous_notification = None
+        self.previous_critical_notification = None
 
         queue = self.queued_nofitications()
         pprint(queue)
         for notification in queue:
-            self.dismiss_nofitication(notification['id'])
-            sleep(0.5)
+            if notification['priority'] == "critical":
+                self.dismiss_nofitication(notification['id'])
+                sleep(0.1)
 
         self.send_ratings()
         sleep(3)
@@ -113,42 +139,26 @@ class App(object):
         print(f"sending {flag}")
         icon = self.flags[flag]
 
-        data = {
-            "priority": "critical",
-            "icon_type":"none",
-            "model": {
-                "cycles": 0,
-                "frames": [
-                    {"icon": f"{icon}", "text": f"{flag}"}
-                ]
-            }
-        }
+        notification_obj = Notification('critical', 'none', Model(0, [Frame(f"{icon}", f"{flag}")]))
 
-        self.send_notification(data)
+        self.send_notification(notification_obj)
 
     def send_ratings(self):
-        data = {
-            "priority": "critical",
-            "icon_type":"none",
-            "model": {
-                "cycles": 0,
-                "frames": [
-                    {"icon": 'i43085', "text": '5,429'},
-                    {"icon": 'i43595', "text": 'A 4.11'}
-                ]
-            }
-        }
 
-        self.send_notification(data)
+        notification_obj = Notification('critical', 'none', Model(0, [Frame('i43085', '5,429'), Frame('i43595', 'A 4.11')]))
 
-    def send_notification(self, data):
-        print(f"previous: {self.previous_notification}")
+        self.send_notification(notification_obj)
+
+    def send_notification(self, notification_obj):
+        print(f"previous: {self.previous_critical_notification}")
 
         lametric_url = f"http://{self.args.ip}:8080/api/v2/device/notifications"
         headers = {"Content-Type": "application/json; charset=utf-8"}
         basicAuthCredentials = ("dev", self.args.key)
 
         response = None
+        data = notification_obj.to_json()
+        print(data)
         try:
             response = requests.post(
                 lametric_url,
@@ -170,9 +180,10 @@ class App(object):
 
         try:
             res = json.loads(response.text)
-            if self.previous_notification:
-                self.dismiss_nofitication(self.previous_notification)
-            self.previous_notification = res['success']['id']
+            if self.previous_critical_notification:
+                self.dismiss_nofitication(self.previous_critical_notification)
+            if notification_obj.priority == "critical":
+                self.previous_critical_notification = res['success']['id']
             print(res['success']['id'])
             return True
         except:
