@@ -160,7 +160,7 @@ class App(object):
         response = None
         pprint(notification_obj)
         pprint(notification_obj.priority)
-        data = notification_obj.to_json()
+        data = notification_obj.to_dict()
         pprint(data)
         try:
             response = requests.post(
