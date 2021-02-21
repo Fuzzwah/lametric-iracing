@@ -158,8 +158,10 @@ class App(object):
         basicAuthCredentials = ("dev", self.args.key)
 
         response = None
+        pprint(notification_obj)
+        pprint(notification_obj.priority)
         data = notification_obj.to_json()
-        print(data)
+        pprint(data)
         try:
             response = requests.post(
                 lametric_url,
@@ -168,6 +170,7 @@ class App(object):
                 json=data,
                 timeout=1,
             )
+            pprint(response)
         except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
             print("Failed to send data to LaMetric device: ", err)
         except requests.exceptions.RequestException as err:
@@ -183,7 +186,7 @@ class App(object):
             res = json.loads(response.text)
             if self.previous_critical_notification:
                 self.dismiss_nofitication(self.previous_critical_notification)
-            if notification_obj.priority == "critical":
+            if notification_obj.priority == 'critical':
                 self.previous_critical_notification = res['success']['id']
             print(res['success']['id'])
             return True
