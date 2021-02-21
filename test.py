@@ -54,6 +54,7 @@ from pprint import pprint
 from time import sleep
 from random import choice
 from dataclasses import dataclass
+from typing import List
 
 from dataclasses_json import dataclass_json
 import requests
@@ -71,7 +72,7 @@ class Frame:
 @dataclass
 class Model:
     cycles: int
-    frames: list[Frame]
+    frames: List[Frame]
 
 
 @dataclass_json
