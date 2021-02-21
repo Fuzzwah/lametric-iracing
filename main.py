@@ -164,42 +164,9 @@ class State(object):
     car_in_world: bool = False
     last_car_setup_tick: int = -1
     previous_events_sent: list = field(default_factory=list)
-    previous_json_sent: dict = field(default_factory=dict)
     cycles_start_shown: int = 0
     ratings_sent: bool = False
-
-
-@dataclass
-class NotificationIDS(object):
-    """
-    a dataclass object to track the notifcation ids for each event
-    """
-
-    ratings: int = None
-    position: int = None
-    laps: int = None
-    best_laptime: int = None
-    start_hidden: int = None
-    checkered: int = None
-    white: int = None
-    green: int = None
-    yellow: int = None
-    yellow_waving: int = None
-    red: int = None
-    blue: int = None
-    debris: int = None
-    green_held: int = None
-    random_waving: int = None
-    caution: int = None
-    caution_waving: int = None
-    black: int = None
-    disqualify: int = None
-    furled: int = None
-    repair: int = None
-    crossed: int = None
-    one_lap_to_green: int = None
-    ten_to_go: int = None
-    five_to_go: int = None
+    previous_notification_id: int = None
 
 
 class WorkerSignals(QObject):
@@ -303,7 +270,6 @@ class MainWindow(Window):
         self.state = State()
         self.sent_data = Data()
         self.data = Data()
-        self.notification_ids = NotificationIDS()
 
         self.threadpool = QThreadPool()
 
@@ -364,15 +330,6 @@ class MainWindow(Window):
         except KeyError:
             setattr(self.data, attr, None)
 
-    def update_notification_ids(self, attr, value):
-        """
-        A little wrapper to handle notification_ids object to keep track of which notification id's hold each event
-        """
-        try:
-            setattr(self.notification_ids, attr, value)
-        except KeyError:
-            setattr(self.notification_ids, attr, None)
-
     def data_collection_cycle(self):
         """
         Runs on a loop that polls the iRacing client for driver data, flags, other info
@@ -412,149 +369,106 @@ class MainWindow(Window):
             self.state.cycles_start_shown += 1
             events.append(["start_hidden", "Start"])
             print(f"start_hidden: {self.data.flags} - {Flags.start_hidden}")
-        elif self.notification_ids.start_hidden:
-            self.dismiss_notification("start_hidden")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.checkered:
             flag =True
             events.append(["checkered", "Finish"])
             print(f"checkered: {self.data.flags} - {Flags.checkered}")
-        elif self.notification_ids.checkered:
-            self.dismiss_notification("checkered")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.white:
             flag =True
             events.append(["white", "White"])
             print(f"white: {self.data.flags} - {Flags.white}")
-        elif self.notification_ids.white:
-            self.dismiss_notification("white")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green:
             flag =True
             events.append(["green", "Green"])
             print(f"green: {self.data.flags} - {Flags.green}")
-        elif self.notification_ids.green:
-            self.dismiss_notification("green")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow:
             flag =True
             events.append(["yellow", "Yellow"])
             print(f"yellow: {self.data.flags} - {Flags.yellow}")
-        elif self.notification_ids.yellow:
-            self.dismiss_notification("yellow")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.red:
             flag =True
             events.append(["red", "Red"])
             print(f"red: {self.data.flags} - {Flags.red}")
-        elif self.notification_ids.red:
-            self.dismiss_notification("red")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.blue:
             flag =True
             events.append(["blue", "Blue"])
             print(f"blue: {self.data.flags} - {Flags.blue}")
-        elif self.notification_ids.blue:
-            self.dismiss_notification("blue")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.debris:
             flag =True
             events.append(["debris", "Debris"])
             print(f"debris: {self.data.flags} - {Flags.debris}")
-        elif self.notification_ids.debris:
-            self.dismiss_notification("debris")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.crossed:
             flag =True
             events.append(["crossed", "Crossed"])
             print(f"crossed: {self.data.flags} - {Flags.crossed}")
-        elif self.notification_ids.crossed:
-            self.dismiss_notification("crossed")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow_waving:
             flag =True
             events.append(["yellow_waving", "Yellow"])
             print(f"yellow_waving: {self.data.flags} - {Flags.yellow_waving}")
-        elif self.notification_ids.yellow_waving:
-            self.dismiss_notification("yellow_waving")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.one_lap_to_green:
             flag =True
             events.append(["one_lap_to_green", "1 Lap"])
             print(f"one_lap_to_green: {self.data.flags} - {Flags.one_lap_to_green}")
-        elif self.notification_ids.one_lap_to_green:
-            self.dismiss_notification("one_lap_to_green")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green_held:
             flag =True
             events.append(["green_held", "Green"])
             print(f"green_held: {self.data.flags} - {Flags.green_held}")
-        elif self.notification_ids.green_held:
-            self.dismiss_notification("green_held")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.ten_to_go:
             flag =True
             events.append(["ten_to_go", "10 to go"])
             print(f"ten_to_go: {self.data.flags} - {Flags.ten_to_go}")
-        elif self.notification_ids.ten_to_go:
-            self.dismiss_notification("ten_to_go")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.five_to_go:
             flag =True
             events.append(["five_to_go", "5 to go"])
             print(f"five_to_go: {self.data.flags} - {Flags.five_to_go}")
-        elif self.notification_ids.five_to_go:
-            self.dismiss_notification("five_to_go")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.random_waving:
             flag =True
             events.append(["random_waving", "Random"])
             print(f"random_waving: {self.data.flags} - {Flags.random_waving}")
-        elif self.notification_ids.random_waving:
-            self.dismiss_notification("random_waving")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution:
             flag =True
             events.append(["caution", "Caution"])
             print(f"caution: {self.data.flags} - {Flags.caution}")
-        elif self.notification_ids.caution:
-            self.dismiss_notification("caution")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution_waving:
             flag =True
             events.append(["caution_waving", "Caution"])
             print(f"caution_waving: {self.data.flags} - {Flags.caution_waving}")
-        elif self.notification_ids.caution_waving:
-            self.dismiss_notification("caution_waving")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.black:
             flag =True
             events.append(["black", "Black"])
             print(f"black: {self.data.flags} - {Flags.black}")
-        elif self.notification_ids.black:
-            print("dismissing black")
-            self.dismiss_notification("black")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.disqualify:
             flag =True
             events.append(["disqualify", "DQ"])
             print(f"disqualify: {self.data.flags} - {Flags.disqualify}")
-        elif self.notification_ids.disqualify:
-            self.dismiss_notification("disqualify")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.furled:
             flag =True
             events.append(["furled", "Warning"])
             print(f"furled: {self.data.flags} - {Flags.furled}")
-        elif self.notification_ids.furled:
-            self.dismiss_notification("furled")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.repair:
             flag =True
             events.append(["repair", "Damage"])
             print(f"repair: {self.data.flags} - {Flags.repair}")
-        elif self.notification_ids.repair:
-            self.dismiss_notification("repair")
 
         if self.data.best_laptime:
             if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime and self.data.best_laptime:
@@ -672,16 +586,13 @@ class MainWindow(Window):
             if len(events) > 0:
                 self.send_notification(events, priority='info', ratings=True)
 
-    def dismiss_notification(self, event):
+    def dismiss_notification(self, notification_id):
         """
         Dismisses a notification
         """
 
-        notification_id = getattr(self.notification_ids, event)
-        if notification_id:
-            self.update_notification_ids(event, None)
-            res = self.call_lametric_api("delete", notification_id=notification_id)
-            print(res)
+        res = self.call_lametric_api("delete", notification_id=notification_id)
+        print(res)
 
     def send_notification(self, events, priority="critical", cycles=0, ratings=False):
         """
@@ -705,19 +616,18 @@ class MainWindow(Window):
 
         if sorted(events_to_send) != sorted(self.state.previous_events_sent):
             if len(data["model"]["frames"]) > 0:
+                if self.state.previous_notification_id:
+                    self.dismiss_notification(self.state.previous_notification_id)
+                res = self.call_lametric_api("send", data=data)
                 if ratings:
                     self.state.ratings_sent = True
                 else:
-                    self.state.ratings_sent = False
-                res = self.call_lametric_api("send", data=data)
-                try:
-                    notification_id = res['success']['id']
-                except KeyError:
-                    notification_id = None
-                for event, text in events_to_send:
-                    self.update_notification_ids(event, notification_id)
-                self.state.previous_events_sent = events_to_send
-                self.state.previous_json_sent = data
+                    try:
+                        notification_id = res['success']['id']
+                    except KeyError:
+                        notification_id = None
+                    self.state.previous_notification_id = notification_id
+                    self.state.previous_events_sent = events_to_send
 
     def call_lametric_api(self, endpoint, data=None, notification_id=None):
         """
