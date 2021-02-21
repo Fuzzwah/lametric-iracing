@@ -15,6 +15,7 @@ import requests
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
 from dataclasses_json import dataclass_json
 from PyQt5.QtWidgets import QApplication, QMessageBox
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import (
     QCoreApplication,
     QObject,
@@ -376,87 +377,87 @@ class MainWindow(Window):
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and self.state.cycles_start_shown < 20:
             self.state.cycles_start_shown += 1
-            frames.append(Frame("start_hidden", "Start"))
+            frames.append(Frame(Icons.start_hidden, "Start"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.checkered:
             flag = True
-            frames.append(Frame("checkered", "Finish"))
+            frames.append(Frame(Icons.checkered, "Finish"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.white:
             flag = True
-            frames.append(Frame("white", "White"))
+            frames.append(Frame(Icons.white, "White"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green:
             flag = True
-            frames.append(Frame("green", "Green"))
+            frames.append(Frame(Icons.green, "Green"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow:
             flag = True
-            frames.append(Frame("yellow", "Yellow"))
+            frames.append(Frame(Icons.yellow, "Yellow"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.red:
             flag = True
-            frames.append(Frame("red", "Red"))
+            frames.append(Frame(Icons.red, "Red"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.blue:
             flag = True
-            frames.append(Frame("blue", "Blue"))
+            frames.append(Frame(Icons.blue, "Blue"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.debris:
             flag = True
-            frames.append(Frame("debris", "Debris"))
+            frames.append(Frame(Icons.debris, "Debris"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.crossed:
             flag = True
-            frames.append(Frame("crossed", "Crossed"))
+            frames.append(Frame(Icons.crossed, "Crossed"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow_waving:
             flag = True
-            frames.append(Frame("yellow_waving", "Yellow"))
+            frames.append(Frame(Icons.yellow_waving, "Yellow"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.one_lap_to_green:
             flag = True
-            frames.append(Frame("one_lap_to_green", "1 Lap"))
+            frames.append(Frame(Icons.one_lap_to_green, "1 Lap"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green_held:
             flag = True
-            frames.append(Frame("green_held", "Green"))
+            frames.append(Frame(Icons.green_held, "Green"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.ten_to_go:
             flag = True
-            frames.append(Frame("ten_to_go", "10 to go"))
+            frames.append(Frame(Icons.ten_to_go, "10 to go"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.five_to_go:
             flag = True
-            frames.append(Frame("five_to_go", "5 to go"))
+            frames.append(Frame(Icons.five_to_go, "5 to go"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.random_waving:
             flag = True
-            frames.append(Frame("random_waving", "Random"))
+            frames.append(Frame(Icons.random_waving, "Random"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution:
             flag = True
-            frames.append(Frame("caution", "Caution"))
+            frames.append(Frame(Icons.caution, "Caution"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution_waving:
             flag = True
-            frames.append(Frame("caution_waving", "Caution"))
+            frames.append(Frame(Icons.caution_waving, "Caution"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.black:
             flag = True
-            frames.append(Frame("black", "Black"))
+            frames.append(Frame(Icons.black, "Black"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.disqualify:
             flag = True
-            frames.append(Frame("disqualify", "DQ"))
+            frames.append(Frame(Icons.disqualify, "DQ"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.furled:
             flag = True
-            frames.append(Frame("furled", "Warning"))
+            frames.append(Frame(Icons.furled, "Warning"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.repair:
             flag = True
-            frames.append(Frame("repair", "Damage"))
+            frames.append(Frame(Icons.repair, "Damage"))
 
         if self.data.best_laptime:
             if self.sent_data.best_laptime != self.data.best_laptime:
@@ -466,7 +467,7 @@ class MainWindow(Window):
                     print(frames)
             if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime:
                 self.lineEdit_BestLap.setText(self.data.best_laptime)
-                frames.append(Frame("purple", self.data.best_laptime))
+                frames.append(Frame(Icons.purple, self.data.best_laptime))
         
         if self.data.position:
             if self.checkBox_Position.isChecked() and not flag and self.sent_data.position != self.data.position:
@@ -485,7 +486,7 @@ class MainWindow(Window):
                     print(frames)
             if self.checkBox_Laps.isChecked() and not flag and self.sent_data.laps != self.data.laps:
                 self.lineEdit_Laps.setText(f"{self.data.laps}")
-                frames.append(Frame('laps', f"{self.data.laps}"))
+                frames.append(Frame(Icons.laps, f"{self.data.laps}"))
 
 
         if len(frames) > 0:
@@ -562,7 +563,7 @@ class MainWindow(Window):
         frames = []
 
         if self.checkBox_IRating.isChecked():
-            frames.append(Frame("ir", f"{self.driver.irating:,}"))
+            frames.append(Frame(Icons.ir, f"{self.driver.irating:,}"))
 
         if self.checkBox_License.isChecked():
             icon = "ir"
@@ -708,16 +709,17 @@ class MainWindow(Window):
         What to do when the test button is clicked
         """
 
-        notification_obj = Notification('info', 'none', Model(2, [Frame('green_tick', 'Success')]))
+        notification_obj = Notification('info', 'none', Model(2, [Frame(Icons.green_tick, "Success")]))
         if self.send_notification(notification_obj):
             msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
+            msg.setIconPixmap(QPixmap("ui/green_tick.png"))
+            #msg.setIcon(QMessageBox.Information)
             msg.setWindowTitle("Test Send Results")
             msg.setText("Successfully sent the test notification to your LaMetric Time clock.\n\nYou're ready to go!")
             msg.exec_()
         else:
             msg = QMessageBox()
-            msg.setIcon(QMessageBox.Information)
+            msg.setIcon(QMessageBox.Critical)
             msg.setWindowTitle("Test Send Results")
             msg.setText("Failed to send the test notification to your LaMetric Time clock. \n\nPlease check the Settings window and ensure that you have the correct IP address and API key.")
             msg.exec_()
