@@ -73,8 +73,10 @@ class App(object):
         self.previous_notification = None
 
         queue = self.queued_nofitications()
+        pprint(queue)
         for notification in queue:
             self.dismiss_nofitication(notification['id'])
+            sleep(0.5)
 
         self.send_ratings()
         sleep(3)
@@ -83,6 +85,8 @@ class App(object):
         self.send_random_flag()
         sleep(3)
         self.send_random_flag()
+        queue = self.queued_nofitications()
+        pprint(queue)
 
     flags = {
         'start_hidden': 'a43445',
@@ -106,13 +110,14 @@ class App(object):
 
     def send_random_flag(self):
         flag = choice(list(self.flags.keys()))
+        print(f"sending {flag}")
         icon = self.flags[flag]
 
         data = {
             "priority": "critical",
             "icon_type":"none",
             "model": {
-                "cycles": 2,
+                "cycles": 0,
                 "frames": [
                     {"icon": f"{icon}", "text": f"{flag}"}
                 ]
@@ -137,10 +142,7 @@ class App(object):
         self.send_notification(data)
 
     def send_notification(self, data):
-
-        if self.previous_notification:
-            self.dismiss_nofitication(self.previous_notification)
-            sleep(0.2)
+        print(f"previous: {self.previous_notification}")
 
         lametric_url = f"http://{self.args.ip}:8080/api/v2/device/notifications"
         headers = {"Content-Type": "application/json; charset=utf-8"}
@@ -167,12 +169,17 @@ class App(object):
             print("Timeout: ", errt)
 
         try:
-            self.previous_notification = response['success']['id']
+            res = json.loads(response.text)
+            if self.previous_notification:
+                self.dismiss_nofitication(self.previous_notification)
+            self.previous_notification = res['success']['id']
+            print(res['success']['id'])
             return True
         except:
             return False
 
     def dismiss_nofitication(self, notification_id):
+        print(f"dismissing {notification_id}")
 
         lametric_url = f"http://{self.args.ip}:8080/api/v2/device/notifications/{notification_id}"
         headers = {"Content-Type": "application/json; charset=utf-8"}
@@ -197,9 +204,11 @@ class App(object):
         except requests.exceptions.Timeout as errt:
             print("Timeout: ", errt)
 
-        if response:
-            return json.loads(response.text)
-        else:
+        try:
+            res = json.loads(response.text)
+            print(res)
+            return True
+        except:
             return False
 
 
