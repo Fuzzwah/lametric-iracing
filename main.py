@@ -169,6 +169,39 @@ class State(object):
     ratings_sent: bool = False
 
 
+@dataclass
+class NotificationIDS(object):
+    """
+    a dataclass object to track the notifcation ids for each event
+    """
+
+    ratings: int = None
+    position: int = None
+    laps: int = None
+    best_laptime: int = None
+    start_hidden: int = None
+    checkered: int = None
+    white: int = None
+    green: int = None
+    yellow: int = None
+    yellow_waving: int = None
+    red: int = None
+    blue: int = None
+    debris: int = None
+    green_held: int = None
+    random_waving: int = None
+    caution: int = None
+    caution_waving: int = None
+    black: int = None
+    disqualify: int = None
+    furled: int = None
+    repair: int = None
+    crossed: int = None
+    one_lap_to_green: int = None
+    ten_to_go: int = None
+    five_to_go: int = None
+
+
 class WorkerSignals(QObject):
     '''
     Defines the signals available from a running worker thread.
@@ -447,7 +480,7 @@ class MainWindow(Window):
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.one_lap_to_green:
             flag =True
-            events.append(["one_lap_to_green", "1 to Green"])
+            events.append(["one_lap_to_green", "1 Lap"])
             print(f"one_lap_to_green: {self.data.flags} - {Flags.one_lap_to_green}")
         elif self.notification_ids.one_lap_to_green:
             self.dismiss_notification(self.notification_ids.one_lap_to_green)
@@ -499,6 +532,7 @@ class MainWindow(Window):
             events.append(["black", "Black"])
             print(f"black: {self.data.flags} - {Flags.black}")
         elif self.notification_ids.black:
+            print("dismissing black")
             self.dismiss_notification(self.notification_ids.black)
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.disqualify:
@@ -526,7 +560,7 @@ class MainWindow(Window):
             if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime and self.data.best_laptime:
                 self.lineEdit_BestLap.setText(self.data.best_laptime)
                 events.append(["purple", self.data.best_laptime])
-
+        
         if self.data.position:
             if self.checkBox_Position.isChecked() and not flag and self.sent_data.position != self.data.position:
                 self.lineEdit_Position.setText(f"{self.data.position}")
@@ -543,7 +577,7 @@ class MainWindow(Window):
 
         if len(events) > 0:
             if flag:
-                self.send_notification(events, priority="warning")
+                self.send_notification(events)
             else:
                 self.send_notification(events, cycles=2)
 
@@ -631,7 +665,7 @@ class MainWindow(Window):
                 events.append([icon, f"{self.driver.safety_rating}"])
 
             if len(events) > 0:
-                self.send_notification(events, ratings=True)
+                self.send_notification(events, priority='info', ratings=True)
 
     def dismiss_notification(self, notification_id):
         """
@@ -640,7 +674,7 @@ class MainWindow(Window):
         res = self.call_lametric_api("delete", notification_id=notification_id)
         print(res)
 
-    def send_notification(self, events, priority="info", cycles=0, ratings=False):
+    def send_notification(self, events, priority="critical", cycles=0, ratings=False):
         """
         Accepts a list of events and packages them up into json and triggers the sending of a notification via LaMetic API
         """
