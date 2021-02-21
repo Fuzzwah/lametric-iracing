@@ -6,289 +6,79 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>630</width>
-    <height>279</height>
+    <width>400</width>
+    <height>140</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>LaMetric iRacing Data Sender</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout" columnstretch="0">
+   <layout class="QGridLayout" name="gridLayout" columnstretch="0,0">
     <item row="0" column="0">
-     <layout class="QHBoxLayout" name="leftBox">
+     <layout class="QVBoxLayout" name="verticalLayout">
       <item>
-       <layout class="QVBoxLayout" name="verticalLayout_2">
+       <layout class="QHBoxLayout" name="topBox">
+        <property name="leftMargin">
+         <number>5</number>
+        </property>
+        <property name="topMargin">
+         <number>5</number>
+        </property>
+        <property name="rightMargin">
+         <number>5</number>
+        </property>
+        <property name="bottomMargin">
+         <number>5</number>
+        </property>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_Main">
+         <layout class="QVBoxLayout" name="leftBox">
           <item>
-           <layout class="QVBoxLayout" name="verticalLayout_LeftCheckBoxes">
-            <property name="spacing">
-             <number>15</number>
-            </property>
-            <property name="leftMargin">
-             <number>5</number>
-            </property>
-            <property name="topMargin">
-             <number>5</number>
-            </property>
-            <property name="rightMargin">
-             <number>5</number>
-            </property>
-            <property name="bottomMargin">
-             <number>5</number>
-            </property>
+           <layout class="QHBoxLayout" name="IRating">
             <item>
-             <widget class="QLabel" name="labelName">
-              <property name="maximumSize">
+             <widget class="QCheckBox" name="checkBox_IRating">
+              <property name="minimumSize">
                <size>
-                <width>16777215</width>
-                <height>14</height>
+                <width>80</width>
+                <height>0</height>
                </size>
               </property>
               <property name="text">
-               <string>Name     </string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QCheckBox" name="checkBox_IRating">
-              <property name="text">
                <string>iRating</string>
               </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
              </widget>
             </item>
             <item>
+             <widget class="QLineEdit" name="lineEdit_IRating"/>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="License">
+            <item>
              <widget class="QCheckBox" name="checkBox_License">
+              <property name="minimumSize">
+               <size>
+                <width>80</width>
+                <height>0</height>
+               </size>
+              </property>
               <property name="text">
                <string>License</string>
               </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
              </widget>
             </item>
             <item>
-             <widget class="QCheckBox" name="checkBox_Position">
-              <property name="text">
-               <string>Position</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QCheckBox" name="checkBox_Laps">
-              <property name="text">
-               <string>Laps</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QCheckBox" name="checkBox_LapsLeft">
-              <property name="text">
-               <string>Laps Left</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
+             <widget class="QLineEdit" name="lineEdit_License"/>
             </item>
            </layout>
           </item>
           <item>
-           <layout class="QVBoxLayout" name="verticalLayout_LeftFields">
-            <property name="leftMargin">
-             <number>5</number>
-            </property>
-            <property name="topMargin">
-             <number>5</number>
-            </property>
-            <property name="rightMargin">
-             <number>5</number>
-            </property>
-            <property name="bottomMargin">
-             <number>5</number>
-            </property>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_Name">
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_IRating">
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_License">
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_Position">
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_Laps">
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_LapsLeft">
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <layout class="QVBoxLayout" name="verticalLayout_RightCheckBoxes">
-            <property name="spacing">
-             <number>15</number>
-            </property>
-            <property name="leftMargin">
-             <number>5</number>
-            </property>
-            <property name="topMargin">
-             <number>5</number>
-            </property>
-            <property name="rightMargin">
-             <number>5</number>
-            </property>
-            <property name="bottomMargin">
-             <number>5</number>
-            </property>
-            <item>
-             <widget class="QCheckBox" name="checkBox_LastLap">
-              <property name="text">
-               <string>Last Lap</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QCheckBox" name="checkBox_BestLap">
-              <property name="text">
-               <string>Best Lap</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QCheckBox" name="checkBox_FuelPerLap">
-              <property name="text">
-               <string>Fuel Per Lap</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QCheckBox" name="checkBox_FuelLeft">
-              <property name="text">
-               <string>Fuel Left</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QCheckBox" name="checkBox_TimeLeft">
-              <property name="text">
-               <string>Time Left</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
+           <layout class="QHBoxLayout" name="Flags">
             <item>
              <widget class="QCheckBox" name="checkBox_Flags">
               <property name="text">
                <string>Flags</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <layout class="QVBoxLayout" name="verticalLayout_RightFields">
-            <property name="leftMargin">
-             <number>5</number>
-            </property>
-            <property name="topMargin">
-             <number>5</number>
-            </property>
-            <property name="rightMargin">
-             <number>5</number>
-            </property>
-            <property name="bottomMargin">
-             <number>31</number>
-            </property>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_LastLap">
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_BestLap">
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_FuelPerLap">
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_FuelLeft">
-              <property name="readOnly">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_TimeLeft">
-              <property name="readOnly">
-               <bool>true</bool>
               </property>
              </widget>
             </item>
@@ -297,25 +87,86 @@
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_Buttons" stretch="0,0">
-          <property name="sizeConstraint">
-           <enum>QLayout::SetMaximumSize</enum>
-          </property>
+         <layout class="QVBoxLayout" name="rightBox">
           <item>
-           <widget class="QPushButton" name="settingsButton">
-            <property name="text">
-             <string>Settings</string>
-            </property>
-           </widget>
+           <layout class="QHBoxLayout" name="Laps">
+            <item>
+             <widget class="QCheckBox" name="checkBox_Laps">
+              <property name="minimumSize">
+               <size>
+                <width>80</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Laps</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_Laps"/>
+            </item>
+           </layout>
           </item>
           <item>
-           <widget class="QPushButton" name="testButton">
-            <property name="text">
-             <string>Test Send</string>
-            </property>
-           </widget>
+           <layout class="QHBoxLayout" name="BestLap">
+            <item>
+             <widget class="QCheckBox" name="checkBox_BestLap">
+              <property name="minimumSize">
+               <size>
+                <width>80</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Best Lap</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_BestLap"/>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="Position">
+            <item>
+             <widget class="QCheckBox" name="checkBox_Position">
+              <property name="minimumSize">
+               <size>
+                <width>80</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Position</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_Position"/>
+            </item>
+           </layout>
           </item>
          </layout>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="bottomBox">
+        <item>
+         <widget class="QPushButton" name="settingsButton">
+          <property name="text">
+           <string>Settings</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="testButton">
+          <property name="text">
+           <string>Test Send</string>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>

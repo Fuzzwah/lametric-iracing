@@ -14,7 +14,7 @@ from typing import Optional, List, Dict
 import requests
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
 from dataclasses_json import dataclass_json
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import (
     QCoreApplication,
     QObject,
@@ -240,17 +240,12 @@ class Worker(QRunnable):
 
 class MainWindow(Window):
     def __init__(self):
-        super().__init__("ui/MainWindow_new.ui")
+        super().__init__("ui/MainWindow.ui")
 
         self.setFixedWidth(400)
         self.setFixedHeight(140)
 
-        self.dialog: Optional[SettingsDialog] = None
-
-        mnu = self.actionSettings
-        mnu.setShortcut("Ctrl+O")
-        mnu.setStatusTip("Show settings")
-        mnu.triggered.connect(self.show_settings)
+        self.settings_dialog: Optional[SettingsDialog] = None
 
         sb = self.statusBar()
         sb.setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
@@ -285,9 +280,24 @@ class MainWindow(Window):
 
         self.timerConnectionMonitor.start()
 
+        self.msg = QMessageBox()
+
+    def check_settings(self):
         s = QSettings()
-        #s.clear()
-        #pprint(s.allKeys())
+        try:
+            self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
+        except:
+            self.lametric_ip = None
+        try:
+            self.lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
+        except:
+            self.lametric_api_key = None
+
+        if not self.lametric_ip or not self.lametric_api_key:
+            self.msg.setWindowTitle("Please configure the settings")
+            self.msg.setText("Please use the Settings window to configure this application with the IP address of our LaMetric Time clock and it's API key.")
+            self.msg.exec_()
+            self.open_settings_dialog()        
 
     # here we check if we are connected to iracing
     # so we can retrieve some data
@@ -448,8 +458,6 @@ class MainWindow(Window):
             flag = True
             frames.append(Frame("repair", "Damage"))
 
-        print(flag)
-
         if self.data.best_laptime:
             if self.sent_data.best_laptime != self.data.best_laptime:
                 print("new best lap")
@@ -607,12 +615,15 @@ class MainWindow(Window):
         """
  
         data = notification_obj.to_dict()
-        if data != self.data.previous_data_sent:
+        if data != self.state.previous_data_sent:
             res = self.call_lametric_api("send", data=data)
-            if "success" in res:
-                self.dismiss_prior_notifications()
-                self.data.previous_data_sent = data
-                return True
+            if res:
+                if "success" in res:
+                    self.dismiss_prior_notifications()
+                    self.state.previous_data_sent = data
+                    return True
+                else:
+                    return False
             else:
                 return False
 
@@ -677,26 +688,19 @@ class MainWindow(Window):
                 print("Error Connecting: ", errc)
             except requests.exceptions.Timeout as errt:
                 print("Timeout: ", errt)
+        else:
+            self.open_settings_dialog()
 
-    def show_settings(self):
-        """
-        Triggers the opening of the settings window
-        """
-        self.open_dialog()
 
     @pyqtSlot()
     def on_settingsButton_clicked(self):
-        self.open_dialog()
+        self.open_settings_dialog()
 
-    @pyqtSlot()
-    def on_settingsButtonModal_clicked(self):
-        self.open_dialog(True)
+    def open_settings_dialog(self):
+        if self.settings_dialog is None:
+            self.settings_dialog = SettingsDialog()
 
-    def open_dialog(self, modal: bool = False):
-        if self.dialog is None:
-            self.dialog = SettingsDialog()
-
-        self.dialog.show(modal)
+        self.settings_dialog.show()
 
     @pyqtSlot()
     def on_testButton_clicked(self):
@@ -704,8 +708,15 @@ class MainWindow(Window):
         What to do when the test button is clicked
         """
 
-        pprint(self.state)
-
+        notification_obj = Notification('info', 'none', Model(2, [Frame('green_tick', 'Success')]))
+        if self.send_notification(notification_obj):
+            self.msg.setWindowTitle("Test Send Results")
+            self.msg.setText("Successfully sent the test notification to your LaMetric Time clock.\n\nYou're ready to go!")
+            self.msg.exec_()
+        else:
+            self.msg.setWindowTitle("Test Send Results")
+            self.msg.setText("Failed to send the test notification to your LaMetric Time clock. \n\nPlease check the Settings window and ensure that you have the correct IP address and API key.")
+            self.msg.exec_()
 
     def closeEvent(self, e):
         """
@@ -730,15 +741,6 @@ class SettingsDialog(Dialog):
         super().closeEvent(e)
         e.accept()
 
-
-class MessageDialog(Dialog):
-    def __init__(self):
-        super(MessageDialog, self).__init__("ui/MessageDialog.ui")
-
-    def closeEvent(self, e):
-        super().closeEvent(e)
-        e.accept()
-
 if __name__ == "__main__":
     QCoreApplication.setOrganizationName("Fuzzwah")
     QCoreApplication.setApplicationName("LaMetric iRacing Data Sender")
@@ -749,5 +751,6 @@ if __name__ == "__main__":
     root = MainWindow()
     root.resize(800, 300)
     root.show()
+    root.check_settings()
     ret = qapp.exec_()
     sys.exit(ret)
