@@ -347,7 +347,6 @@ class MainWindow(Window):
                     bestlaptime = f"{minutes:.0f}:0{seconds:.3f}"
                 else:
                     bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
-                print(bestlaptime)
                 self.update_data('best_laptime', bestlaptime)
             if int(self.ir['LapCompleted']) > 0:
                 if int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx']) > 32000:
