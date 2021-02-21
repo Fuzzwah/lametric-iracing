@@ -368,112 +368,95 @@ class MainWindow(Window):
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and self.state.cycles_start_shown < 20:
             self.state.cycles_start_shown += 1
             events.append(["start_hidden", "Start"])
-            print(f"start_hidden: {self.data.flags} - {Flags.start_hidden}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.checkered:
             flag = True
             events.append(["checkered", "Finish"])
-            print(f"checkered: {self.data.flags} - {Flags.checkered}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.white:
             flag = True
             events.append(["white", "White"])
-            print(f"white: {self.data.flags} - {Flags.white}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green:
             flag = True
             events.append(["green", "Green"])
-            print(f"green: {self.data.flags} - {Flags.green}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow:
             flag = True
             events.append(["yellow", "Yellow"])
-            print(f"yellow: {self.data.flags} - {Flags.yellow}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.red:
             flag = True
             events.append(["red", "Red"])
-            print(f"red: {self.data.flags} - {Flags.red}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.blue:
             flag = True
             events.append(["blue", "Blue"])
-            print(f"blue: {self.data.flags} - {Flags.blue}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.debris:
             flag = True
             events.append(["debris", "Debris"])
-            print(f"debris: {self.data.flags} - {Flags.debris}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.crossed:
             flag = True
             events.append(["crossed", "Crossed"])
-            print(f"crossed: {self.data.flags} - {Flags.crossed}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow_waving:
             flag = True
             events.append(["yellow_waving", "Yellow"])
-            print(f"yellow_waving: {self.data.flags} - {Flags.yellow_waving}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.one_lap_to_green:
             flag = True
             events.append(["one_lap_to_green", "1 Lap"])
-            print(f"one_lap_to_green: {self.data.flags} - {Flags.one_lap_to_green}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green_held:
             flag = True
             events.append(["green_held", "Green"])
-            print(f"green_held: {self.data.flags} - {Flags.green_held}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.ten_to_go:
             flag = True
             events.append(["ten_to_go", "10 to go"])
-            print(f"ten_to_go: {self.data.flags} - {Flags.ten_to_go}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.five_to_go:
             flag = True
             events.append(["five_to_go", "5 to go"])
-            print(f"five_to_go: {self.data.flags} - {Flags.five_to_go}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.random_waving:
             flag = True
             events.append(["random_waving", "Random"])
-            print(f"random_waving: {self.data.flags} - {Flags.random_waving}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution:
             flag = True
             events.append(["caution", "Caution"])
-            print(f"caution: {self.data.flags} - {Flags.caution}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution_waving:
             flag = True
             events.append(["caution_waving", "Caution"])
-            print(f"caution_waving: {self.data.flags} - {Flags.caution_waving}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.black:
             flag = True
             events.append(["black", "Black"])
-            print(f"black: {self.data.flags} - {Flags.black}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.disqualify:
             flag = True
             events.append(["disqualify", "DQ"])
-            print(f"disqualify: {self.data.flags} - {Flags.disqualify}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.furled:
             flag = True
             events.append(["furled", "Warning"])
-            print(f"furled: {self.data.flags} - {Flags.furled}")
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.repair:
             flag = True
             events.append(["repair", "Damage"])
-            print(f"repair: {self.data.flags} - {Flags.repair}")
+
+        print(flag)
 
         if self.data.best_laptime:
             if self.sent_data.best_laptime != self.data.best_laptime:
                 print("new best lap")
-            if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime and self.data.best_laptime:
+                if flag:
+                    print("but flag")
+            if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime:
                 self.lineEdit_BestLap.setText(self.data.best_laptime)
                 events.append(["purple", self.data.best_laptime])
         
@@ -489,6 +472,8 @@ class MainWindow(Window):
         if self.data.laps:
             if self.sent_data.laps != self.data.laps:
                 print("new lap")
+                if flag:
+                    print("but flag")
             if self.checkBox_Laps.isChecked() and not flag and self.sent_data.laps != self.data.laps:
                 self.lineEdit_Laps.setText(f"{self.data.laps}")
                 events.append(['laps', f"{self.data.laps}"])
@@ -599,7 +584,11 @@ class MainWindow(Window):
         """
 
         res = self.call_lametric_api("delete", notification_id=notification_id)
-        print(res)
+        if res:
+            self.state.previous_flag_notification_id = None
+            return res['success']
+        else:
+            return False
 
     def send_notification(self, events, priority="critical", cycles=0, ratings=False, flag=False):
         """
