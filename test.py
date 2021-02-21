@@ -53,7 +53,6 @@ import json
 from time import sleep
 from random import choice
 
-import configobj
 import requests
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
 
@@ -61,10 +60,9 @@ class App(object):
     """ The main class of your application
     """
 
-    def __init__(self, log, args, config):
+    def __init__(self, log, args):
         self.log = log
         self.args = args
-        self.config = config
         self.version = "{}: {}".format(__program__, __version__)
 
         self.log.info(self.version)
@@ -241,7 +239,6 @@ def parse_args(argv):
     # Define and parse command line arguments
     parser = argparse.ArgumentParser(description=__program__)
     parser.add_argument("--logfile", help="file to write log to", default="%s.log" % __program__)
-    parser.add_argument("--configfile", help="use a different config file", default="config.ini")
     parser.add_argument("--debug", action='store_true', default=False)
     parser.add_argument("--ip", help="LaMetric Time device's IP address", default=None)
     parser.add_argument("--key", help="LaMetric Time device's API key", default=None)
@@ -296,24 +293,8 @@ def main(raw_args):
     # connect to the logger we set up
     log = logging.getLogger(__name__)
 
-    if not os.path.isfile(args.configfile):
-        config = configobj.ConfigObj()
-        config.filename = args.configfile
-
-        config['Section'] = {}
-        config['Section']['item'] = 'something'
-        config.write()
-
-    # try to read in the config
-    try:
-        config = configobj.ConfigObj(args.configfile)
-
-    except (IOError, KeyError, AttributeError) as e:
-        print("Unable to successfully read config file: %s" % args.configfile)
-        sys.exit(0)
-
     # fire up our base class and get this app cranking!
-    app = App(log, args, config)
+    app = App(log, args)
 
     # things that the app does go here:
 
