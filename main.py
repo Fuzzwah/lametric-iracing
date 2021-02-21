@@ -576,6 +576,7 @@ class MainWindow(Window):
                 events.append(['laps', f"{self.data.laps}"])
 
         print(events)
+        print(f"self.state.ratings_sent: {self.state.ratings_sent}")
         if len(events) > 0:
             if flag:
                 self.send_notification(events)
