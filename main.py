@@ -505,6 +505,7 @@ class MainWindow(Window):
         else:
             if self.state.previous_flag_notification_id:
                 self.dismiss_notification(self.state.previous_flag_notification_id)
+            self.send_ratings()
 
     def main_cycle(self):
         """
