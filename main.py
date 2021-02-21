@@ -280,8 +280,6 @@ class MainWindow(Window):
 
         self.timerConnectionMonitor.start()
 
-        self.msg = QMessageBox()
-
     def check_settings(self):
         s = QSettings()
         try:
@@ -294,9 +292,11 @@ class MainWindow(Window):
             self.lametric_api_key = None
 
         if not self.lametric_ip or not self.lametric_api_key:
-            self.msg.setWindowTitle("Please configure the settings")
-            self.msg.setText("Please use the Settings window to configure this application with the IP address of our LaMetric Time clock and it's API key.")
-            self.msg.exec_()
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setWindowTitle("Please configure the settings")
+            msg.setText("Please use the Settings window to configure this application with the IP address of our LaMetric Time clock and it's API key.")
+            msg.exec_()
             self.open_settings_dialog()        
 
     # here we check if we are connected to iracing
@@ -710,13 +710,17 @@ class MainWindow(Window):
 
         notification_obj = Notification('info', 'none', Model(2, [Frame('green_tick', 'Success')]))
         if self.send_notification(notification_obj):
-            self.msg.setWindowTitle("Test Send Results")
-            self.msg.setText("Successfully sent the test notification to your LaMetric Time clock.\n\nYou're ready to go!")
-            self.msg.exec_()
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setWindowTitle("Test Send Results")
+            msg.setText("Successfully sent the test notification to your LaMetric Time clock.\n\nYou're ready to go!")
+            msg.exec_()
         else:
-            self.msg.setWindowTitle("Test Send Results")
-            self.msg.setText("Failed to send the test notification to your LaMetric Time clock. \n\nPlease check the Settings window and ensure that you have the correct IP address and API key.")
-            self.msg.exec_()
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setWindowTitle("Test Send Results")
+            msg.setText("Failed to send the test notification to your LaMetric Time clock. \n\nPlease check the Settings window and ensure that you have the correct IP address and API key.")
+            msg.exec_()
 
     def closeEvent(self, e):
         """
