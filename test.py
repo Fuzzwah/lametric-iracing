@@ -146,7 +146,7 @@ class App(object):
 
     def send_ratings(self):
 
-        notification_obj = Notification('critical', 'none', Model(0, [Frame('i43085', '5,429'), Frame('i43595', 'A 4.11')]))
+        notification_obj = Notification('info', 'none', Model(0, [Frame('i43085', '5,429'), Frame('i43595', 'A 4.11')]))
 
         self.send_notification(notification_obj)
 
@@ -158,10 +158,7 @@ class App(object):
         basicAuthCredentials = ("dev", self.args.key)
 
         response = None
-        pprint(notification_obj)
-        pprint(notification_obj.priority)
         data = dict(notification_obj.to_dict())
-        pprint(data)
         try:
             response = requests.post(
                 lametric_url,
@@ -170,7 +167,6 @@ class App(object):
                 json=data,
                 timeout=1,
             )
-            pprint(response)
         except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
             print("Failed to send data to LaMetric device: ", err)
         except requests.exceptions.RequestException as err:

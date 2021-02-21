@@ -9,9 +9,11 @@ from time import sleep
 from random import random
 import json
 import traceback
+from typing import Optional, List
+
 import requests
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
-from typing import Optional
+from dataclasses_json import dataclass_json
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import (
     QCoreApplication,
@@ -44,6 +46,28 @@ def ordinal(num):
     else:
         suffix = SUFFIXES.get(int(num_str[-1:]), 'th')
     return "{:,}{}".format(num, suffix)
+
+
+@dataclass_json
+@dataclass
+class Frame:
+    icon: str
+    text: str
+
+
+@dataclass_json
+@dataclass
+class Model:
+    cycles: int
+    frames: List[Frame]
+
+
+@dataclass_json
+@dataclass
+class Notification:
+    priority: str
+    icon_type: str
+    model: Model
 
 
 @dataclass
@@ -143,39 +167,6 @@ class State(object):
     previous_json_sent: dict = field(default_factory=dict)
     cycles_start_shown: int = 0
     ratings_sent: bool = False
-
-
-@dataclass
-class NotificationIDS(object):
-    """
-    a dataclass object to track the notifcation ids for each event
-    """
-
-    ratings: int = None
-    position: int = None
-    laps: int = None
-    best_laptime: int = None
-    start_hidden: int = None
-    checkered: int = None
-    white: int = None
-    green: int = None
-    yellow: int = None
-    yellow_waving: int = None
-    red: int = None
-    blue: int = None
-    debris: int = None
-    green_held: int = None
-    random_waving: int = None
-    caution: int = None
-    caution_waving: int = None
-    black: int = None
-    disqualify: int = None
-    furled: int = None
-    repair: int = None
-    crossed: int = None
-    one_lap_to_green: int = None
-    ten_to_go: int = None
-    five_to_go: int = None
 
 
 class WorkerSignals(QObject):
