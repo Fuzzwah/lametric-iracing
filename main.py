@@ -492,10 +492,9 @@ class MainWindow(Window):
         if len(frames) > 0:
             if flag:
                 notification_obj = Notification('critical', 'none', Model(0, frames))
-                self.send_notification(notification_obj)
             else:
                 notification_obj = Notification('critical', 'none', Model(2, frames))
-                self.send_notification(notification_obj)
+            self.send_notification(notification_obj)
             self.sent_data = self.data
         else:
             self.send_ratings()
@@ -592,11 +591,15 @@ class MainWindow(Window):
         """
 
         queue = self.call_lametric_api("queue")
+        print("NEW ITEM")
+        pprint(queue[-1])
         del queue[-1]
 
         for notification in queue:
+            print("REMOVING")
+            pprint(notification)
             self.dismiss_notification(notification['id'])
-            sleep(0.1)            
+            sleep(0.1)
 
     def dismiss_notification(self, notification_id):
         """
