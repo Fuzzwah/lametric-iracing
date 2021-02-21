@@ -575,6 +575,7 @@ class MainWindow(Window):
                 self.lineEdit_Laps.setText(f"{self.data.laps}")
                 events.append(['laps', f"{self.data.laps}"])
 
+        print(events)
         if len(events) > 0:
             if flag:
                 self.send_notification(events)
@@ -715,7 +716,6 @@ class MainWindow(Window):
                     self.update_notification_ids(event, notification_id)
                 self.state.previous_events_sent = events_to_send
                 self.state.previous_json_sent = data
-                print(self.notification_ids)
 
     def call_lametric_api(self, endpoint, data=None, notification_id=None):
         """
