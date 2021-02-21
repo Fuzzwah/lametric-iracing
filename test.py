@@ -50,6 +50,7 @@ import sys
 import argparse
 import logging, logging.handlers
 import json
+from pprint import pprint
 from time import sleep
 from random import choice
 
@@ -71,7 +72,7 @@ class App(object):
 
         self.previous_notification = None
 
-        print(self.queued_nofitications())
+        pprint(self.queued_nofitications())
 
         self.send_ratings()
         sleep(3)
