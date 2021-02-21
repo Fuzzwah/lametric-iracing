@@ -9,7 +9,7 @@ from time import sleep
 from random import random
 import json
 import traceback
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import requests
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
@@ -163,10 +163,9 @@ class State(object):
     ir_connected: bool = False
     car_in_world: bool = False
     last_car_setup_tick: int = -1
-    previous_events_sent: list = field(default_factory=list)
+    previous_data_sent: Dict = None
     cycles_start_shown: int = 0
     ratings_sent: bool = False
-    previous_flag_notification_id: int = None
 
 
 class WorkerSignals(QObject):
@@ -360,94 +359,94 @@ class MainWindow(Window):
     def process_data(self):
         """
         Runs on a loop and processes the data stored in the data object
-        Builds a list of events to send to the notification sender
+        Builds a list of frames to send to the notification sender
         """
-        events = []
+        frames = []
         flag = False
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and self.state.cycles_start_shown < 20:
             self.state.cycles_start_shown += 1
-            events.append(["start_hidden", "Start"])
+            frames.append(Frame("start_hidden", "Start"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.checkered:
             flag = True
-            events.append(["checkered", "Finish"])
+            frames.append(Frame("checkered", "Finish"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.white:
             flag = True
-            events.append(["white", "White"])
+            frames.append(Frame("white", "White"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green:
             flag = True
-            events.append(["green", "Green"])
+            frames.append(Frame("green", "Green"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow:
             flag = True
-            events.append(["yellow", "Yellow"])
+            frames.append(Frame("yellow", "Yellow"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.red:
             flag = True
-            events.append(["red", "Red"])
+            frames.append(Frame("red", "Red"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.blue:
             flag = True
-            events.append(["blue", "Blue"])
+            frames.append(Frame("blue", "Blue"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.debris:
             flag = True
-            events.append(["debris", "Debris"])
+            frames.append(Frame("debris", "Debris"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.crossed:
             flag = True
-            events.append(["crossed", "Crossed"])
+            frames.append(Frame("crossed", "Crossed"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow_waving:
             flag = True
-            events.append(["yellow_waving", "Yellow"])
+            frames.append(Frame("yellow_waving", "Yellow"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.one_lap_to_green:
             flag = True
-            events.append(["one_lap_to_green", "1 Lap"])
+            frames.append(Frame("one_lap_to_green", "1 Lap"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green_held:
             flag = True
-            events.append(["green_held", "Green"])
+            frames.append(Frame("green_held", "Green"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.ten_to_go:
             flag = True
-            events.append(["ten_to_go", "10 to go"])
+            frames.append(Frame("ten_to_go", "10 to go"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.five_to_go:
             flag = True
-            events.append(["five_to_go", "5 to go"])
+            frames.append(Frame("five_to_go", "5 to go"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.random_waving:
             flag = True
-            events.append(["random_waving", "Random"])
+            frames.append(Frame("random_waving", "Random"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution:
             flag = True
-            events.append(["caution", "Caution"])
+            frames.append(Frame("caution", "Caution"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution_waving:
             flag = True
-            events.append(["caution_waving", "Caution"])
+            frames.append(Frame("caution_waving", "Caution"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.black:
             flag = True
-            events.append(["black", "Black"])
+            frames.append(Frame("black", "Black"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.disqualify:
             flag = True
-            events.append(["disqualify", "DQ"])
+            frames.append(Frame("disqualify", "DQ"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.furled:
             flag = True
-            events.append(["furled", "Warning"])
+            frames.append(Frame("furled", "Warning"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.repair:
             flag = True
-            events.append(["repair", "Damage"])
+            frames.append(Frame("repair", "Damage"))
 
         print(flag)
 
@@ -456,9 +455,10 @@ class MainWindow(Window):
                 print("new best lap")
                 if flag:
                     print("but flag")
+                    print(frames)
             if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime:
                 self.lineEdit_BestLap.setText(self.data.best_laptime)
-                events.append(["purple", self.data.best_laptime])
+                frames.append(Frame("purple", self.data.best_laptime))
         
         if self.data.position:
             if self.checkBox_Position.isChecked() and not flag and self.sent_data.position != self.data.position:
@@ -467,29 +467,28 @@ class MainWindow(Window):
                 if self.sent_data.position:
                     if self.sent_data.position < self.data.position:
                         event = "lose_position"
-                events.append([event, f"{self.data.position}"])
+                frames.append(Frame(event, f"{self.data.position}"))
 
         if self.data.laps:
             if self.sent_data.laps != self.data.laps:
                 print("new lap")
                 if flag:
                     print("but flag")
+                    print(frames)
             if self.checkBox_Laps.isChecked() and not flag and self.sent_data.laps != self.data.laps:
                 self.lineEdit_Laps.setText(f"{self.data.laps}")
-                events.append(['laps', f"{self.data.laps}"])
+                frames.append(Frame('laps', f"{self.data.laps}"))
 
-        if len(events) > 0:
-            print(events)
+
+        if len(frames) > 0:
             if flag:
-                self.send_notification(events, flag=True)
+                notification_obj = Notification('critical', 'none', Model(0, frames))
+                self.send_notification(notification_obj)
             else:
-                if self.state.previous_flag_notification_id:
-                    self.dismiss_notification(self.state.previous_flag_notification_id)
-                self.send_notification(events, cycles=2)
+                notification_obj = Notification('critical', 'none', Model(2, frames))
+                self.send_notification(frames, cycles=2)
             self.sent_data = self.data
         else:
-            if self.state.previous_flag_notification_id:
-                self.dismiss_notification(self.state.previous_flag_notification_id)
             self.send_ratings()
 
     def main_cycle(self):
@@ -550,84 +549,82 @@ class MainWindow(Window):
 
     def send_ratings(self):
         """
-        A wrapper that builds the events list containing iRating and License / SR info, and triggers the notification send
+        A wrapper that builds the frames list containing iRating and License / SR info, and triggers the notification send
         """
-        if not self.state.ratings_sent:
-            events = []
+        frames = []
 
-            if self.checkBox_IRating.isChecked():
-                events.append(["ir", f"{self.driver.irating:,}"])
+        if self.checkBox_IRating.isChecked():
+            frames.append(Frame("ir", f"{self.driver.irating:,}"))
 
-            if self.checkBox_License.isChecked():
-                icon = "ir"
-                if self.driver.license_letter == 'R':
-                    icon = "license_letter_r"
-                elif self.driver.license_letter == 'D':
-                    icon = "license_letter_d"
-                elif self.driver.license_letter == 'C':
-                    icon = "license_letter_c"
-                elif self.driver.license_letter == 'B':
-                    icon = "license_letter_b"
-                elif self.driver.license_letter == 'A':
-                    icon = "license_letter_a"
-                elif self.driver.license_letter == 'P':
-                    icon = "license_letter_p"
+        if self.checkBox_License.isChecked():
+            icon = "ir"
+            if self.driver.license_letter == 'R':
+                icon = "license_letter_r"
+            elif self.driver.license_letter == 'D':
+                icon = "license_letter_d"
+            elif self.driver.license_letter == 'C':
+                icon = "license_letter_c"
+            elif self.driver.license_letter == 'B':
+                icon = "license_letter_b"
+            elif self.driver.license_letter == 'A':
+                icon = "license_letter_a"
+            elif self.driver.license_letter == 'P':
+                icon = "license_letter_p"
 
-                events.append([icon, f"{self.driver.safety_rating}"])
+            frames.append(Frame(icon, f"{self.driver.safety_rating}"))
 
-            if len(events) > 0:
-                self.send_notification(events, priority='info', ratings=True)
+        if len(frames) > 0:
+            notification_obj = Notification('info', 'none', Model(0, frames))
+            self.send_notification(notification_obj)
+
+    def dismiss_prior_notifications(self):
+        """
+        Dismisses any notifications prior to the new one we just sent
+        """
+
+        queue = self.call_lametric_api("queue")
+        del queue[-1]
+
+        for notification in queue:
+            self.dismiss_notification(notification['id'])
+            sleep(0.1)            
 
     def dismiss_notification(self, notification_id):
         """
-        Dismisses a notification
+        Dismisses a single notification by id
         """
 
         res = self.call_lametric_api("delete", notification_id=notification_id)
         if res:
-            self.state.previous_flag_notification_id = None
             return res['success']
         else:
             return False
 
-    def send_notification(self, events, priority="critical", cycles=0, ratings=False, flag=False):
+    def send_notification(self, notification_obj):
         """
-        Accepts a list of events and packages them up into json and triggers the sending of a notification via LaMetic API
+        Accepts a Notification object triggers the sending of a notification via LaMetic API
+        Note: the function will not send the same notification multiple times in a row
         """
-        events_to_send = []
-
-        data = {
-            "priority": priority,
-            "icon_type":"none",
-            "model": {
-                "cycles": cycles,
-                "frames": []
-            }
-        }
-
-        for event, text in events:
-            events_to_send.append((event, text))
-            icon = getattr(Icons, event)
-            data["model"]["frames"].append({"icon": icon, "text": text})
-
-        if sorted(events_to_send) != sorted(self.state.previous_events_sent):
-            if len(data["model"]["frames"]) > 0:
-                res = self.call_lametric_api("send", data=data)
-                try:
-                    notification_id = res['success']['id']
-                except KeyError:
-                    notification_id = None
-                finally:
-                    self.state.previous_events_sent = events_to_send
-                    if ratings:
-                        self.state.ratings_sent = True
-                    elif flag:
-                        self.state.previous_flag_notification_id = notification_id
+ 
+        data = notification_obj.to_dict()
+        if data != self.data.previous_data_sent:
+            res = self.call_lametric_api("send", data=data)
+            if "success" in res:
+                self.dismiss_prior_notifications()
+                self.data.previous_data_sent = data
+                return True
+            else:
+                return False
 
     def call_lametric_api(self, endpoint, data=None, notification_id=None):
         """
-        The function that handles all interactions (send, list queue, delete from queue) with the LaMetric clock via API calls
+        The function that handles all interactions with the LaMetric clock via API calls
+        Available endpoints are:
+            send - to send a notification (must include data)
+            delete - to delete or dismiss a notification (must include notification_id)
+            queue - returns a list of current notifications in the queue
         """
+        
         s = QSettings()
         try:
             self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')

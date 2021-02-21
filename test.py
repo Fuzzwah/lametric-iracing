@@ -54,7 +54,7 @@ from pprint import pprint
 from time import sleep
 from random import choice
 from dataclasses import dataclass
-from typing import List
+from typing import List, Dict
 
 from dataclasses_json import dataclass_json
 import requests
