@@ -166,7 +166,7 @@ class State(object):
     previous_events_sent: list = field(default_factory=list)
     cycles_start_shown: int = 0
     ratings_sent: bool = False
-    previous_notification_id: int = None
+    previous_flag_notification_id: int = None
 
 
 class WorkerSignals(QObject):
@@ -497,10 +497,15 @@ class MainWindow(Window):
         if len(events) > 0:
             print(events)
             if flag:
-                self.send_notification(events)
+                self.send_notification(events, flag=True)
             else:
+                if self.state.previous_flag_notification_id:
+                    self.dismiss_notification(self.state.previous_flag_notification_id)
                 self.send_notification(events, cycles=2)
             self.sent_data = self.data
+        else:
+            if self.state.previous_flag_notification_id:
+                self.dismiss_notification(self.state.previous_flag_notification_id)
 
     def main_cycle(self):
         """
@@ -596,7 +601,7 @@ class MainWindow(Window):
         res = self.call_lametric_api("delete", notification_id=notification_id)
         print(res)
 
-    def send_notification(self, events, priority="critical", cycles=0, ratings=False):
+    def send_notification(self, events, priority="critical", cycles=0, ratings=False, flag=False):
         """
         Accepts a list of events and packages them up into json and triggers the sending of a notification via LaMetic API
         """
@@ -618,18 +623,17 @@ class MainWindow(Window):
 
         if sorted(events_to_send) != sorted(self.state.previous_events_sent):
             if len(data["model"]["frames"]) > 0:
-                if self.state.previous_notification_id:
-                    self.dismiss_notification(self.state.previous_notification_id)
                 res = self.call_lametric_api("send", data=data)
-                if ratings:
-                    self.state.ratings_sent = True
-                else:
-                    try:
-                        notification_id = res['success']['id']
-                    except KeyError:
-                        notification_id = None
-                    self.state.previous_notification_id = notification_id
+                try:
+                    notification_id = res['success']['id']
+                except KeyError:
+                    notification_id = None
+                finally:
                     self.state.previous_events_sent = events_to_send
+                    if ratings:
+                        self.state.ratings_sent = True
+                    elif flag:
+                        self.state.previous_flag_notification_id = notification_id
 
     def call_lametric_api(self, endpoint, data=None, notification_id=None):
         """
