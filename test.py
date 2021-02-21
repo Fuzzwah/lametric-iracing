@@ -102,7 +102,7 @@ class App(object):
     }
 
     def send_random_flag(self):
-        flag = choice(self.flags.keys())
+        flag = choice(list(self.flags.keys()))
         icon = self.flags[flag]
 
         data = {
