@@ -126,6 +126,7 @@ class Icons(object):
     blue: str = 'a43495'
     debris: str = 'a43497'
     green_held: str = 'i43445'
+    one_lap_to_green: str = 'i43445'
     random_waving: str = 'a43458'
     caution: str = 'i43439'
     caution_waving: str = 'a43439'
@@ -135,7 +136,6 @@ class Icons(object):
     repair: str = 'a43500'
     # we don't have icons for these yet
     crossed: str = ir
-    one_lap_to_green: str = ir
     ten_to_go: str = ir
     five_to_go: str = ir
 
@@ -417,7 +417,7 @@ class MainWindow(Window):
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.one_lap_to_green:
             flag = True
-            frames.append(Frame(Icons.one_lap_to_green, "1 Lap"))
+            frames.append(Frame(Icons.one_lap_to_green, "in 1 lap"))
 
         if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green_held:
             flag = True
@@ -597,7 +597,7 @@ class MainWindow(Window):
 
         for notification in queue:
             print("REMOVING")
-            pprint(notification)
+            pprint(notification['frames'])
             self.dismiss_notification(notification['id'])
             sleep(0.1)
 
@@ -623,7 +623,8 @@ class MainWindow(Window):
             res = self.call_lametric_api("send", data=data)
             if res:
                 if "success" in res:
-                    self.dismiss_prior_notifications()
+                    if data['priority'] == "critical":
+                        self.dismiss_prior_notifications()
                     self.state.previous_data_sent = data
                     return True
                 else:
