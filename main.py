@@ -581,6 +581,7 @@ class MainWindow(Window):
                 self.send_notification(events)
             else:
                 self.send_notification(events, cycles=2)
+            self.sent_data = self.data
         else:
             self.send_ratings()
 
