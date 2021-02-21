@@ -495,7 +495,7 @@ class MainWindow(Window):
                 self.send_notification(notification_obj)
             else:
                 notification_obj = Notification('critical', 'none', Model(2, frames))
-                self.send_notification(frames, cycles=2)
+                self.send_notification(notification_obj)
             self.sent_data = self.data
         else:
             self.send_ratings()
@@ -566,19 +566,19 @@ class MainWindow(Window):
             frames.append(Frame(Icons.ir, f"{self.driver.irating:,}"))
 
         if self.checkBox_License.isChecked():
-            icon = "ir"
+            icon = Icons.ir
             if self.driver.license_letter == 'R':
-                icon = "license_letter_r"
+                icon = Icons.license_letter_r
             elif self.driver.license_letter == 'D':
-                icon = "license_letter_d"
+                icon = Icons.license_letter_d
             elif self.driver.license_letter == 'C':
-                icon = "license_letter_c"
+                icon = Icons.license_letter_c
             elif self.driver.license_letter == 'B':
-                icon = "license_letter_b"
+                icon = Icons.license_letter_b
             elif self.driver.license_letter == 'A':
-                icon = "license_letter_a"
+                icon = Icons.license_letter_a
             elif self.driver.license_letter == 'P':
-                icon = "license_letter_p"
+                icon = Icons.license_letter_p
 
             frames.append(Frame(icon, f"{self.driver.safety_rating}"))
 
