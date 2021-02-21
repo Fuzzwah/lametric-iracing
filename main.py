@@ -582,24 +582,20 @@ class MainWindow(Window):
             frames.append(Frame(icon, f"{self.driver.safety_rating}"))
 
         if len(frames) > 0:
-            notification_obj = Notification('info', 'none', Model(0, frames))
+            notification_obj = Notification('critical', 'none', Model(0, frames))
             self.send_notification(notification_obj)
 
-    def dismiss_prior_notifications(self):
+    def dismiss_notifications(self, exclude=None):
         """
         Dismisses any notifications prior to the new one we just sent
         """
 
         queue = self.call_lametric_api("queue")
-        print("NEW ITEM")
-        pprint(queue[-1])
-        del queue[-1]
 
         for notification in queue:
-            print("REMOVING")
-            pprint(notification['frames'])
-            self.dismiss_notification(notification['id'])
-            sleep(0.1)
+            if notification['id'] != exclude:
+                self.dismiss_notification(notification['id'])
+                sleep(0.1)
 
     def dismiss_notification(self, notification_id):
         """
@@ -620,11 +616,11 @@ class MainWindow(Window):
  
         data = notification_obj.to_dict()
         if data != self.state.previous_data_sent:
+            pprint(data)
             res = self.call_lametric_api("send", data=data)
             if res:
                 if "success" in res:
-                    if data['priority'] == "critical":
-                        self.dismiss_prior_notifications()
+                    self.dismiss_notifications(exclude=res['success']['id'])
                     self.state.previous_data_sent = data
                     return True
                 else:
