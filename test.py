@@ -71,6 +71,10 @@ class App(object):
         if self.args.debug:
             print(self.version)
 
+        self.previous_notification = None
+
+        print(self.queued_nofitications())
+
         self.send_ratings()
         sleep(3)
         self.send_random_flag()
@@ -133,10 +137,15 @@ class App(object):
 
     def send_notification(self, data):
 
+        if self.previous_notification:
+            self.dismiss_nofitication(self.previous_notification)
+            sleep(0.2)
+
         lametric_url = f"http://{self.args.ip}:8080/api/v2/device/notifications"
         headers = {"Content-Type": "application/json; charset=utf-8"}
         basicAuthCredentials = ("dev", self.args.key)
 
+        response = None
         try:
             response = requests.post(
                 lametric_url,
@@ -156,11 +165,11 @@ class App(object):
         except requests.exceptions.Timeout as errt:
             print("Timeout: ", errt)
 
-        if response:
-            return json.loads(response.text)
-        else:
+        try:
+            self.previous_notification = response['success']['id']
+            return True
+        except:
             return False
-
 
     def dismiss_nofitication(self, notification_id):
 
@@ -168,6 +177,7 @@ class App(object):
         headers = {"Content-Type": "application/json; charset=utf-8"}
         basicAuthCredentials = ("dev", self.args.key)
 
+        response = None
         try:
             response = requests.delete(
                 lametric_url,
@@ -190,6 +200,38 @@ class App(object):
             return json.loads(response.text)
         else:
             return False
+
+
+    def queued_nofitications(self):
+
+        lametric_url = f"http://{self.args.ip}:8080/api/v2/device/notifications"
+        headers = {"Content-Type": "application/json; charset=utf-8"}
+        basicAuthCredentials = ("dev", self.args.key)
+
+        response = None
+        try:
+            response = requests.get(
+                lametric_url,
+                headers=headers,
+                auth=basicAuthCredentials,
+                timeout=1,
+            )
+        except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
+            print("Failed to send data to LaMetric device: ", err)
+        except requests.exceptions.RequestException as err:
+            print("Oops: Something Else: ", err)
+        except requests.exceptions.HTTPError as errh:
+            print("Http Error: ", errh)
+        except requests.exceptions.ConnectionError as errc:
+            print("Error Connecting: ", errc)
+        except requests.exceptions.Timeout as errt:
+            print("Timeout: ", errt)
+
+        if response:
+            return json.loads(response.text)
+        else:
+            return False
+
 
 
 def parse_args(argv):
