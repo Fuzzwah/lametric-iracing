@@ -72,7 +72,9 @@ class App(object):
 
         self.previous_notification = None
 
-        pprint(self.queued_nofitications())
+        queue = self.queued_nofitications()
+        for notification in queue:
+            self.dismiss_nofitication(notification['id'])
 
         self.send_ratings()
         sleep(3)
