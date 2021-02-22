@@ -304,6 +304,7 @@ class MainCycle(QObject):
         while self.ir.is_initialized and self.ir.is_connected:
             self.data_collection()
             self.process_data()
+            sleep(0.3)
             if not self.ir.is_initialized and not self.ir.is_connected:
                 break
         else:
@@ -460,7 +461,6 @@ class MainCycle(QObject):
                     frames.append(Frame(Icons.laps, f"{self.data.laps}"))
 
         if len(frames) > 0:
-            print(frames)
             if flag:
                 notification_obj = Notification('critical', 'none', Model(0, frames))
                 self.send_notification(notification_obj)
