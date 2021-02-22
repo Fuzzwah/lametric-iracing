@@ -126,6 +126,7 @@ class Icons(object):
     blue: str = 'a43495'
     debris: str = 'a43497'
     green_held: str = 'i43445'
+    one_lap_to_green: str = 'i43445'
     random_waving: str = 'a43458'
     caution: str = 'i43439'
     caution_waving: str = 'a43439'
@@ -135,7 +136,6 @@ class Icons(object):
     repair: str = 'a43500'
     # we don't have icons for these yet
     crossed: str = ir
-    one_lap_to_green: str = ir
     ten_to_go: str = ir
     five_to_go: str = ir
 
@@ -505,7 +505,7 @@ class MainCycle(QObject):
         Dismisses any notifications prior to the new one we just sent
         """
 
-        queue = self.call_lametric_api("queue")
+        queue = call_lametric_api("queue")
         del queue[-1]
 
         for notification in queue:
@@ -517,7 +517,7 @@ class MainCycle(QObject):
         Dismisses a single notification by id
         """
 
-        res = self.call_lametric_api("delete", notification_id=notification_id)
+        res = call_lametric_api("delete", notification_id=notification_id)
         if res:
             return res['success']
         else:
