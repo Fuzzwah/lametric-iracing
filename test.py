@@ -580,13 +580,20 @@ class MainWindow(Window):
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
         self.statusBar().showMessage(('STATUS: iRacing client detected.'))
 
+        enable_irating = self.checkBox_IRating.isChecked()
+        enable_license = self.checkBox_License.isChecked()
+        enable_flags = self.checkBox_Flags.isChecked()
+        enable_laps = self.checkBox_Laps.isChecked()
+        enable_bestlap = self.checkBox_BestLap.isChecked()
+        enable_position = self.checkBox_Position.isChecked()
+
         self.main_thread = QThread()
-        self.main_worker = MainCycle()
+        self.main_worker = MainCycle(enable_irating, enable_license, enable_flags, enable_laps, enable_bestlap, enable_position)
         self.main_worker.moveToThread(self.main_thread)
         self.main_thread.started.connect(self.main_worker.run)
         self.main_worker.disconnected_from_iracing.connect(self.main_thread.quit)
         self.main_worker.disconnected_from_iracing.connect(self.disconnected_from_iracing)
-        self.main_thread.start()    
+        self.main_thread.start()
 
     def disconnected_from_iracing(self):
 
