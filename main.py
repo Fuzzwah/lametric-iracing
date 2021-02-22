@@ -6,7 +6,6 @@ from pprint import pprint
 from dataclasses import dataclass, field
 from datetime import timedelta
 from time import sleep
-from random import random
 import json
 import traceback
 from typing import Optional, List, Dict
@@ -167,7 +166,7 @@ class State(object):
     previous_data_sent: Dict = None
     cycles_start_shown: int = 0
     ratings_sent: bool = False
-    do_not_dismiss: 
+    do_not_dismiss: list = field(default_factory=list)
 
 
 class WorkerSignals(QObject):
@@ -192,7 +191,6 @@ class WorkerSignals(QObject):
     finished = pyqtSignal()
     error = pyqtSignal(tuple)
     result = pyqtSignal(object)
-    #progress = pyqtSignal(int)
 
 
 class Worker(QRunnable):
@@ -299,7 +297,7 @@ class MainWindow(Window):
             msg.setWindowTitle("Please configure the settings")
             msg.setText("Please use the Settings window to configure this application with the IP address of our LaMetric Time clock and it's API key.")
             msg.exec_()
-            self.open_settings_dialog()        
+            self.open_settings_dialog()
 
     # here we check if we are connected to iracing
     # so we can retrieve some data
@@ -470,7 +468,7 @@ class MainWindow(Window):
                 self.lineEdit_BestLap.setText(self.data.best_laptime)
                 frames.append(Frame(Icons.purple, self.data.best_laptime))
                 self.sent_data.best_laptime = self.data.best_laptime
-        
+
         if self.data.position:
             if self.checkBox_Position.isChecked() and not flag and self.sent_data.position != self.data.position:
                 self.lineEdit_Position.setText(f"{self.data.position}")
@@ -497,7 +495,7 @@ class MainWindow(Window):
             if flag:
                 notification_obj = Notification('critical', 'none', Model(0, frames))
             else:
-                notification_obj = Notification('critical', 'none', Model(2, frames))
+                notification_obj = Notification('info', 'none', Model(2, frames))
             self.send_notification(notification_obj)
         else:
             self.send_ratings()
@@ -596,7 +594,7 @@ class MainWindow(Window):
         queue = self.call_lametric_api("queue")
 
         for notification in queue:
-            if notification['id'] != exclude:
+            if notification['id'] not in exclude:
                 self.dismiss_notification(notification['id'])
                 sleep(0.1)
 
@@ -616,14 +614,18 @@ class MainWindow(Window):
         Accepts a Notification object triggers the sending of a notification via LaMetic API
         Note: the function will not send the same notification multiple times in a row
         """
- 
+
         data = notification_obj.to_dict()
         if data != self.state.previous_data_sent:
             pprint(data)
             res = self.call_lametric_api("send", data=data)
             if res:
                 if "success" in res:
-                    self.dismiss_notifications(exclude=res['success']['id'])
+                    if data['priority'] != "critical":
+                        self.state.do_not_dismiss.append(res['success']['id'])
+                        self.dismiss_notifications(exclude=self.state.do_not_dismiss)
+                    else:
+                        self.dismiss_notifications(exclude=[res['success']['id']])
                     self.state.previous_data_sent = data
                     return True
                 else:
@@ -639,7 +641,7 @@ class MainWindow(Window):
             delete - to delete or dismiss a notification (must include notification_id)
             queue - returns a list of current notifications in the queue
         """
-        
+
         s = QSettings()
         try:
             self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
@@ -716,7 +718,6 @@ class MainWindow(Window):
         if self.send_notification(notification_obj):
             msg = QMessageBox()
             msg.setIconPixmap(QPixmap("ui/green_tick.png"))
-            #msg.setIcon(QMessageBox.Information)
             msg.setWindowTitle("Test Send Results")
             msg.setText("Successfully sent the test notification to your LaMetric Time clock.\n\nYou're ready to go!")
             msg.exec_()
