@@ -459,11 +459,6 @@ class MainWindow(Window):
             frames.append(Frame("repair", "Damage"))
 
         if self.data.best_laptime:
-            if self.sent_data.best_laptime != self.data.best_laptime:
-                print("new best lap")
-                if flag:
-                    print("but flag")
-                    print(frames)
             if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime:
                 self.lineEdit_BestLap.setText(self.data.best_laptime)
                 frames.append(Frame("purple", self.data.best_laptime))
@@ -478,15 +473,9 @@ class MainWindow(Window):
                 frames.append(Frame(event, f"{self.data.position}"))
 
         if self.data.laps:
-            if self.sent_data.laps != self.data.laps:
-                print("new lap")
-                if flag:
-                    print("but flag")
-                    print(frames)
             if self.checkBox_Laps.isChecked() and not flag and self.sent_data.laps != self.data.laps:
                 self.lineEdit_Laps.setText(f"{self.data.laps}")
                 frames.append(Frame('laps', f"{self.data.laps}"))
-
 
         if len(frames) > 0:
             if flag:
@@ -514,7 +503,6 @@ class MainWindow(Window):
         It updates the status bar, grabs initial driver info, triggers to endless ratings notifications, and starts the main cycle loop
         """
         try:
-            print("517")
             self.timerConnectionMonitor.stop()
         except:
             pass
@@ -553,7 +541,6 @@ class MainWindow(Window):
 
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
-        print("556")
         self.timerMainCycle.stop()
         self.timerConnectionMonitor.start()
 
