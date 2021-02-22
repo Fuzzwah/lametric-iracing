@@ -202,7 +202,7 @@ class MainCycle(QObject):
     disconnected_from_iracing = pyqtSignal()
 
     def __init__(self, parent):
-        super(ConnectToIRacing, self).__init__(parent)
+        super(MainCycle, self).__init__(parent)
 
         self.gui = parent
         self.ir = IRSDK()
@@ -251,27 +251,24 @@ class MainCycle(QObject):
         Runs on a loop that polls the iRacing client for driver data, flags, other info
         It loads the data into the data object and then the process_data function runs
         """
-        if not self.irsdk_connection_check():
-            self.irsdk_connection_controller(False)
-        else:
-            self.ir.freeze_var_buffer_latest()
-            if self.ir['PlayerCarClassPosition'] > 0:
-                self.update_data('position', f"{int(self.ir['PlayerCarClassPosition'])} / {int(len(self.ir['CarIdxClassPosition']))}")
-            if self.ir['LapBestLapTime'] > 0:
-                minutes, seconds = divmod(float(self.ir['LapBestLapTime']), 60)
-                if seconds < 10:
-                    bestlaptime = f"{minutes:.0f}:0{seconds:.3f}"
-                else:
-                    bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
-                self.update_data('best_laptime', bestlaptime)
-            if int(self.ir['LapCompleted']) > 0:
-                if int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx']) > 32000:
-                    laps_total = "∞"
-                else:
-                    laps_total = int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx'])
-                self.update_data('laps', f"{int(self.ir['LapCompleted'])} / {laps_total}")
-            self.update_data('flags', int(self.ir['SessionFlags']))
-            self.ir.unfreeze_var_buffer_latest()
+        self.ir.freeze_var_buffer_latest()
+        if self.ir['PlayerCarClassPosition'] > 0:
+            self.update_data('position', f"{int(self.ir['PlayerCarClassPosition'])} / {int(len(self.ir['CarIdxClassPosition']))}")
+        if self.ir['LapBestLapTime'] > 0:
+            minutes, seconds = divmod(float(self.ir['LapBestLapTime']), 60)
+            if seconds < 10:
+                bestlaptime = f"{minutes:.0f}:0{seconds:.3f}"
+            else:
+                bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
+            self.update_data('best_laptime', bestlaptime)
+        if int(self.ir['LapCompleted']) > 0:
+            if int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx']) > 32000:
+                laps_total = "∞"
+            else:
+                laps_total = int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx'])
+            self.update_data('laps', f"{int(self.ir['LapCompleted'])} / {laps_total}")
+        self.update_data('flags', int(self.ir['SessionFlags']))
+        self.ir.unfreeze_var_buffer_latest()
 
     def process_data(self):
         """
@@ -562,19 +559,18 @@ class MainWindow(Window):
         self.connection_worker.connected_to_iracing.connect(self.connected_to_iracing)
         self.connection_thread.start()
 
-    def connected_to_iracing(self, connected_to_iracing):
-        if connected_to_iracing and not self.state.ir_connected:
-            
-            self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
-            self.statusBar().showMessage(('STATUS: iRacing client detected.'))
+    def connected_to_iracing(self):
+           
+        self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
+        self.statusBar().showMessage(('STATUS: iRacing client detected.'))
 
-            self.main_thread = QThread()
-            self.main_worker = MainCycle()
-            self.main_worker.moveToThread(self.main_thread)
-            self.main_thread.started.connect(self.main_worker.run)
-            self.main_worker.disconnected_from_iracing.connect(self.main_thread.quit)
-            self.main_worker.disconnected_from_iracing.connect(self.disconnected_from_iracing)
-            self.main_thread.start()    
+        self.main_thread = QThread()
+        self.main_worker = MainCycle(self)
+        self.main_worker.moveToThread(self.main_thread)
+        self.main_thread.started.connect(self.main_worker.run)
+        self.main_worker.disconnected_from_iracing.connect(self.main_thread.quit)
+        self.main_worker.disconnected_from_iracing.connect(self.disconnected_from_iracing)
+        self.main_thread.start()    
 
     def disconnected_from_iracing(self):
 
