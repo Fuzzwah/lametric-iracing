@@ -167,6 +167,7 @@ class State(object):
     previous_data_sent: Dict = None
     cycles_start_shown: int = 0
     ratings_sent: bool = False
+    do_not_dismiss: 
 
 
 class WorkerSignals(QObject):
@@ -584,7 +585,7 @@ class MainWindow(Window):
             frames.append(Frame(icon, f"{self.driver.safety_rating}"))
 
         if len(frames) > 0:
-            notification_obj = Notification('critical', 'none', Model(0, frames))
+            notification_obj = Notification('info', 'none', Model(0, frames))
             self.send_notification(notification_obj)
 
     def dismiss_notifications(self, exclude=None):
