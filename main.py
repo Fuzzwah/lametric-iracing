@@ -306,8 +306,10 @@ class MainWindow(Window):
         Checks to see if the irsdk object is connected to the iRacing client
         """
         if self.state.ir_connected and not (self.ir.is_initialized and self.ir.is_connected):
+            self.timerConnectionMonitor.start()
             return False
         elif not self.state.ir_connected and self.ir.startup(silent=True) and self.ir.is_initialized and self.ir.is_connected:
+            self.timerConnectionMonitor.stop()
             return True
         elif self.ir.is_initialized and self.ir.is_connected:
             return True
@@ -345,6 +347,7 @@ class MainWindow(Window):
         It loads the data into the data object and then the process_data function runs
         """
         if not self.irsdk_connection_check():
+            self.timerMainCycle.stop()
             self.irsdk_connection_controller(False)
         else:
             self.ir.freeze_var_buffer_latest()
@@ -514,10 +517,6 @@ class MainWindow(Window):
         When the connection to iRacing client becomes active, this function runs
         It updates the status bar, grabs initial driver info, triggers to endless ratings notifications, and starts the main cycle loop
         """
-        try:
-            self.timerConnectionMonitor.stop()
-        except:
-            pass
         self.state.ir_connected = True
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
         self.statusBar().showMessage(('STATUS: iRacing client detected.'))
