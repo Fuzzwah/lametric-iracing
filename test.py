@@ -211,7 +211,6 @@ def call_lametric_api(endpoint, data=None, notification_id=None):
         lametric_api_key = None
 
     if lametric_ip and lametric_api_key and data:
-        pprint(data)
         lametric_url = f"http://{lametric_ip}:8080/api/v2/device/notifications"
         if endpoint == "delete":
             lametric_url = f"{lametric_url}/{notification_id}"
@@ -499,7 +498,7 @@ class MainCycle(QObject):
             frames.append(Frame(icon, f"{self.driver.safety_rating}"))
 
         if len(frames) > 0:
-            notification_obj = Notification('info', 'none', Model(0, frames))
+            notification_obj = Notification('critical', 'none', Model(0, frames))
             self.send_notification(notification_obj)
 
     def dismiss_prior_notifications(self):
@@ -512,6 +511,7 @@ class MainCycle(QObject):
             del queue[-1]
 
             for notification in queue:
+                pprint(notification)
                 self.dismiss_notification(notification['id'])
                 sleep(0.1)            
 
@@ -537,8 +537,7 @@ class MainCycle(QObject):
             res = call_lametric_api("send", data=data)
             if res:
                 if "success" in res:
-                    if data['priority'] == "critical":
-                        self.dismiss_prior_notifications()
+                    self.dismiss_prior_notifications()
                     self.state.previous_data_sent = data
                     return True
                 else:
