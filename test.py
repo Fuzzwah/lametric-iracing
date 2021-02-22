@@ -191,6 +191,68 @@ class ConnectToIRacing(QObject):
             self.connected_to_iracing.emit()
 
 
+def call_lametric_api(endpoint, data=None, notification_id=None):
+    """
+    The function that handles all interactions with the LaMetric clock via API calls
+    Available endpoints are:
+        send - to send a notification (must include data)
+        delete - to delete or dismiss a notification (must include notification_id)
+        queue - returns a list of current notifications in the queue
+    """
+    
+    s = QSettings()
+    try:
+        lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
+    except:
+        lametric_ip = None
+    try:
+        lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
+    except:
+        lametric_api_key = None
+
+    if lametric_ip and lametric_api_key:
+        lametric_url = f"http://{lametric_ip}:8080/api/v2/device/notifications"
+        if endpoint == "delete":
+            lametric_url = f"{lametric_url}/{notification_id}"
+        headers = {"Content-Type": "application/json; charset=utf-8"}
+        auth_creds = ("dev", lametric_api_key)
+        try:
+            response = False
+            if endpoint == "send":
+                response = requests.post(
+                    lametric_url,
+                    headers=headers,
+                    auth=auth_creds,
+                    json=data,
+                    timeout=1,
+                )
+            elif endpoint == "queue":
+                response = requests.get(
+                    lametric_url,
+                    headers=headers,
+                    auth=auth_creds,
+                    timeout=1,
+                )
+            elif endpoint == "delete":
+                response = requests.delete(
+                    lametric_url,
+                    headers=headers,
+                    auth=auth_creds,
+                    timeout=1,
+                )
+            if response:
+                return json.loads(response.text)
+        except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
+            print("Failed to send data to LaMetric device: ", err)
+        except requests.exceptions.RequestException as err:
+            print("Oops: Something Else: ", err)
+        except requests.exceptions.HTTPError as errh:
+            print("Http Error: ", errh)
+        except requests.exceptions.ConnectionError as errc:
+            print("Error Connecting: ", errc)
+        except requests.exceptions.Timeout as errt:
+            print("Timeout: ", errt)
+
 class MainCycle(QObject):
     """
     The worker that gets the data from iRacing and processes it
@@ -469,7 +531,7 @@ class MainCycle(QObject):
  
         data = notification_obj.to_dict()
         if data != self.state.previous_data_sent:
-            res = self.call_lametric_api("send", data=data)
+            res = call_lametric_api("send", data=data)
             if res:
                 if "success" in res:
                     self.dismiss_prior_notifications()
@@ -480,70 +542,6 @@ class MainCycle(QObject):
             else:
                 return False
 
-    def call_lametric_api(self, endpoint, data=None, notification_id=None):
-        """
-        The function that handles all interactions with the LaMetric clock via API calls
-        Available endpoints are:
-            send - to send a notification (must include data)
-            delete - to delete or dismiss a notification (must include notification_id)
-            queue - returns a list of current notifications in the queue
-        """
-        
-        s = QSettings()
-        try:
-            self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
-        except:
-            self.lametric_ip = None
-        try:
-            self.lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
-        except:
-            self.lametric_api_key = None
-
-        if self.lametric_ip and self.lametric_api_key:
-            lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
-            if endpoint == "delete":
-                lametric_url = f"{lametric_url}/{notification_id}"
-            headers = {"Content-Type": "application/json; charset=utf-8"}
-            basicAuthCredentials = ("dev", self.lametric_api_key)
-            try:
-                response = False
-                if endpoint == "send":
-                    response = requests.post(
-                        lametric_url,
-                        headers=headers,
-                        auth=basicAuthCredentials,
-                        json=data,
-                        timeout=1,
-                    )
-                elif endpoint == "queue":
-                    response = requests.get(
-                        lametric_url,
-                        headers=headers,
-                        auth=basicAuthCredentials,
-                        timeout=1,
-                    )
-                elif endpoint == "delete":
-                    response = requests.delete(
-                        lametric_url,
-                        headers=headers,
-                        auth=basicAuthCredentials,
-                        timeout=1,
-                    )
-                if response:
-                    return json.loads(response.text)
-            except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
-                print("Failed to send data to LaMetric device: ", err)
-            except requests.exceptions.RequestException as err:
-                print("Oops: Something Else: ", err)
-            except requests.exceptions.HTTPError as errh:
-                print("Http Error: ", errh)
-            except requests.exceptions.ConnectionError as errc:
-                print("Error Connecting: ", errc)
-            except requests.exceptions.Timeout as errt:
-                print("Timeout: ", errt)
-        else:
-            self.open_settings_dialog()
-            
 
 class MainWindow(Window):
     def __init__(self):
@@ -656,18 +654,22 @@ class MainWindow(Window):
         """
 
         notification_obj = Notification('info', 'none', Model(2, [Frame('green_tick', 'Success')]))
-        if self.send_notification(notification_obj):
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
-            msg.setWindowTitle("Test Send Results")
-            msg.setText("Successfully sent the test notification to your LaMetric Time clock.\n\nYou're ready to go!")
-            msg.exec_()
-        else:
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Information)
-            msg.setWindowTitle("Test Send Results")
-            msg.setText("Failed to send the test notification to your LaMetric Time clock. \n\nPlease check the Settings window and ensure that you have the correct IP address and API key.")
-            msg.exec_()
+        data = notification_obj.to_dict()
+        res = call_lametric_api("send", data=data)
+        if res:
+            if "success" in res:        
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Critical)
+                msg.setWindowTitle("Test Send Results")
+                msg.setText("Successfully sent the test notification to your LaMetric Time clock.\n\nYou're ready to go!")
+                msg.exec_()
+                return True
+
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+        msg.setWindowTitle("Test Send Results")
+        msg.setText("Failed to send the test notification to your LaMetric Time clock. \n\nPlease check the Settings window and ensure that you have the correct IP address and API key.")
+        msg.exec_()
 
     def closeEvent(self, e):
         """
