@@ -445,18 +445,18 @@ class MainCycle(QObject):
         if self.data.position:
             if not flag and self.sent_data.position != self.data.position:
                 self.position_update.emit(f"{self.data.position}")
-                event = "gain_position"
+                icon = Icons.gain_position
                 if self.sent_data.position:
                     if self.sent_data.position < self.data.position:
-                        event = "lose_position"
+                        icon = Icons.lose_position
                 if self.enable_position:
-                    frames.append(Frame(event, f"{self.data.position}"))
+                    frames.append(Frame(icon, f"{self.data.position}"))
 
         if self.data.laps:
             if not flag and self.sent_data.laps != self.data.laps:
                 self.laps_update.emit(f"{self.data.laps}")
                 if self.enable_laps:
-                    frames.append(Frame('laps', f"{self.data.laps}"))
+                    frames.append(Frame(Icons.laps, f"{self.data.laps}"))
 
         if len(frames) > 0:
             if flag:
@@ -481,19 +481,19 @@ class MainCycle(QObject):
 
         self.license_update.emit(f"{self.driver.safety_rating}")
         if self.enable_license:
-            icon = "ir"
+            icon = Icons.ir
             if self.driver.license_letter == 'R':
-                icon = "license_letter_r"
+                icon = Icons.license_letter_r
             elif self.driver.license_letter == 'D':
-                icon = "license_letter_d"
+                icon = Icons.license_letter_d
             elif self.driver.license_letter == 'C':
-                icon = "license_letter_c"
+                icon = Icons.license_letter_c
             elif self.driver.license_letter == 'B':
-                icon = "license_letter_b"
+                icon = Icons.license_letter_b
             elif self.driver.license_letter == 'A':
-                icon = "license_letter_a"
+                icon = Icons.license_letter_a
             elif self.driver.license_letter == 'P':
-                icon = "license_letter_p"
+                icon = Icons.license_letter_p
             frames.append(Frame(icon, f"{self.driver.safety_rating}"))
 
         if len(frames) > 0:
