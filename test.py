@@ -206,7 +206,7 @@ class MainCycle(QObject):
     position = pyqtSignal(str)
 
     def __init__(self, enable_irating, enable_license, enable_flags, enable_laps, enable_bestlap, enable_position):
-        super(MainCycle, self).__init__(enable_irating, enable_license, enable_flags, enable_laps, enable_bestlap, enable_position)
+        super(MainCycle, self).__init__()
 
         self.ir = IRSDK()
         self.state = State()
