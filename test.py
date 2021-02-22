@@ -199,20 +199,40 @@ class MainCycle(QObject):
     """
 
     disconnected_from_iracing = pyqtSignal()
+    disconnected_from_iracing = pyqtSignal()
 
-    def __init__(self):
-        super(ConnectToIRacing, self).__init__()
+    def __init__(self, parent):
+        super(ConnectToIRacing, self).__init__(parent)
 
+        self.gui = parent
         self.ir = IRSDK()
         self.state = State()
         self.sent_data = Data()
         self.data = Data()
-                
+        self.driver = Driver()
+
+
     def run(self):
         self.ir.startup(silent=True)
+        for dvr in self.ir['DriverInfo']['Drivers']:
+            if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
+                self.driver.caridx = dvr['CarIdx']
+                self.driver.name = dvr['UserName']
+                self.driver.irating = int(dvr['IRating'])
+                self.driver.license_string = dvr['LicString']
+                license_letter, safety_rating = dvr['LicString'].split(' ')
+                self.driver.license_letter = license_letter
+                self.driver.safety_rating = float(safety_rating)
+                break
+
+        self.gui.lineEdit_IRating.setText(f"{self.driver.irating:,}")
+        self.gui.lineEdit_License.setText(self.driver.license_string)
+
         while self.ir.is_initialized and self.ir.is_connected:
             self.data_collection()
             self.process_data()
+            if not self.ir.is_initialized and not self.ir.is_connected:
+                break
         else:
             self.ir.shutdown()
             self.disconnected_from_iracing.emit()
@@ -261,98 +281,98 @@ class MainCycle(QObject):
         frames = []
         flag = False
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and self.state.cycles_start_shown < 20:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and self.state.cycles_start_shown < 20:
             self.state.cycles_start_shown += 1
             frames.append(Frame("start_hidden", "Start"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.checkered:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.checkered:
             flag = True
             frames.append(Frame("checkered", "Finish"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.white:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.white:
             flag = True
             frames.append(Frame("white", "White"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.green:
             flag = True
             frames.append(Frame("green", "Green"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow:
             flag = True
             frames.append(Frame("yellow", "Yellow"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.red:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.red:
             flag = True
             frames.append(Frame("red", "Red"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.blue:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.blue:
             flag = True
             frames.append(Frame("blue", "Blue"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.debris:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.debris:
             flag = True
             frames.append(Frame("debris", "Debris"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.crossed:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.crossed:
             flag = True
             frames.append(Frame("crossed", "Crossed"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow_waving:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow_waving:
             flag = True
             frames.append(Frame("yellow_waving", "Yellow"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.one_lap_to_green:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.one_lap_to_green:
             flag = True
             frames.append(Frame("one_lap_to_green", "1 Lap"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green_held:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.green_held:
             flag = True
             frames.append(Frame("green_held", "Green"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.ten_to_go:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.ten_to_go:
             flag = True
             frames.append(Frame("ten_to_go", "10 to go"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.five_to_go:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.five_to_go:
             flag = True
             frames.append(Frame("five_to_go", "5 to go"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.random_waving:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.random_waving:
             flag = True
             frames.append(Frame("random_waving", "Random"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.caution:
             flag = True
             frames.append(Frame("caution", "Caution"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution_waving:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.caution_waving:
             flag = True
             frames.append(Frame("caution_waving", "Caution"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.black:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.black:
             flag = True
             frames.append(Frame("black", "Black"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.disqualify:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.disqualify:
             flag = True
             frames.append(Frame("disqualify", "DQ"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.furled:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.furled:
             flag = True
             frames.append(Frame("furled", "Warning"))
 
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.repair:
+        if self.gui.checkBox_Flags.isChecked() and self.data.flags & Flags.repair:
             flag = True
             frames.append(Frame("repair", "Damage"))
 
         if self.data.best_laptime:
-            if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime:
-                self.lineEdit_BestLap.setText(self.data.best_laptime)
+            if self.gui.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime:
+                self.gui.lineEdit_BestLap.setText(self.data.best_laptime)
                 frames.append(Frame("purple", self.data.best_laptime))
         
         if self.data.position:
-            if self.checkBox_Position.isChecked() and not flag and self.sent_data.position != self.data.position:
-                self.lineEdit_Position.setText(f"{self.data.position}")
+            if self.gui.checkBox_Position.isChecked() and not flag and self.sent_data.position != self.data.position:
+                self.gui.lineEdit_Position.setText(f"{self.data.position}")
                 event = "gain_position"
                 if self.sent_data.position:
                     if self.sent_data.position < self.data.position:
@@ -360,8 +380,8 @@ class MainCycle(QObject):
                 frames.append(Frame(event, f"{self.data.position}"))
 
         if self.data.laps:
-            if self.checkBox_Laps.isChecked() and not flag and self.sent_data.laps != self.data.laps:
-                self.lineEdit_Laps.setText(f"{self.data.laps}")
+            if self.gui.checkBox_Laps.isChecked() and not flag and self.sent_data.laps != self.data.laps:
+                self.gui.lineEdit_Laps.setText(f"{self.data.laps}")
                 frames.append(Frame('laps', f"{self.data.laps}"))
 
         if len(frames) > 0:
@@ -381,10 +401,10 @@ class MainCycle(QObject):
         """
         frames = []
 
-        if self.checkBox_IRating.isChecked():
+        if self.gui.checkBox_IRating.isChecked():
             frames.append(Frame("ir", f"{self.driver.irating:,}"))
 
-        if self.checkBox_License.isChecked():
+        if self.gui.checkBox_License.isChecked():
             icon = "ir"
             if self.driver.license_letter == 'R':
                 icon = "license_letter_r"
@@ -511,9 +531,6 @@ class MainCycle(QObject):
         else:
             self.open_settings_dialog()
             
-        else:
-            self.ir.shutdown()
-            self.disconnected_from_iracing.emit(True)
 
 class MainWindow(Window):
     def __init__(self):
@@ -548,27 +565,8 @@ class MainWindow(Window):
     def connected_to_iracing(self, connected_to_iracing):
         if connected_to_iracing and not self.state.ir_connected:
             
-            self.ir.startup(silent=True)
-            self.state.ir_connected = True
             self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
             self.statusBar().showMessage(('STATUS: iRacing client detected.'))
-
-            self.driver = Driver()
-
-            for dvr in self.ir['DriverInfo']['Drivers']:
-                if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
-                    self.driver.caridx = dvr['CarIdx']
-                    self.driver.name = dvr['UserName']
-                    self.driver.irating = int(dvr['IRating'])
-                    self.driver.license_string = dvr['LicString']
-                    license_letter, safety_rating = dvr['LicString'].split(' ')
-                    self.driver.license_letter = license_letter
-                    self.driver.safety_rating = float(safety_rating)
-
-                    break
-
-            self.lineEdit_IRating.setText(f"{self.driver.irating:,}")
-            self.lineEdit_License.setText(self.driver.license_string)
 
             self.main_thread = QThread()
             self.main_worker = MainCycle()
