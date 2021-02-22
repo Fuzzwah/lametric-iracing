@@ -674,8 +674,14 @@ class MainWindow(Window):
         When the application is closed, these tasks will be completed
         """
         super().closeEvent(e)
-        self.connection_thread.quit()
-        self.main_thread.quit()
+        try:
+            self.connection_thread.quit()
+        except:
+            pass
+        try:
+            self.main_thread.quit()
+        except:
+            pass
         e.accept()
         QCoreApplication.exit()
 
