@@ -169,82 +169,12 @@ class State(object):
     ratings_sent: bool = False
 
 
-class WorkerSignals(QObject):
-    '''
-    Defines the signals available from a running worker thread.
-
-    Supported signals are:
-
-    finished
-        No data
-
-    error
-        `tuple` (exctype, value, traceback.format_exc() )
-
-    result
-        `object` data returned from processing, anything
-
-    progress
-        `int` indicating % progress
-
-    '''
-    finished = pyqtSignal()
-    error = pyqtSignal(tuple)
-    result = pyqtSignal(object)
-    #progress = pyqtSignal(int)
-
-
-class Worker(QRunnable):
-    '''
-    Worker thread
-
-    Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
-
-    :param callback: The function callback to run on this worker thread. Supplied args and
-                     kwargs will be passed through to the runner.
-    :type callback: function
-    :param args: Arguments to pass to the callback function
-    :param kwargs: Keywords to pass to the callback function
-
-    '''
-
-    def __init__(self, fn, *args, **kwargs):
-        super(Worker, self).__init__()
-
-        # Store constructor arguments (re-used for processing)
-        self.fn = fn
-        self.args = args
-        self.kwargs = kwargs
-        self.signals = WorkerSignals()
-
-        # Add the callback to our kwargs
-        #self.kwargs['progress_callback'] = self.signals.progress
-
-    @pyqtSlot()
-    def run(self):
-        '''
-        Initialise the runner function with passed args, kwargs.
-        '''
-
-        # Retrieve args/kwargs here; and fire processing using them
-        try:
-            result = self.fn(*self.args, **self.kwargs)
-        except:
-            traceback.print_exc()
-            exctype, value = sys.exc_info()[:2]
-            self.signals.error.emit((exctype, value, traceback.format_exc()))
-        else:
-            self.signals.result.emit(result)  # Return the result of the processing
-        finally:
-            self.signals.finished.emit()  # Done
-
-
 class ConnectToIRacing(QObject):
     """
     The worker that monitors if the app is connected to iRacing
     """
 
-    connected_to_iracing = pyqtSignal(bool)
+    connected_to_iracing = pyqtSignal()
 
     def __init__(self):
         super(ConnectToIRacing, self).__init__()
@@ -256,108 +186,36 @@ class ConnectToIRacing(QObject):
             self.ir.startup(silent=True)
             if not self.ir.is_initialized and not self.ir.is_connected:
                 sleep(5)
+        else:
+            self.ir.shutdown()
+            self.connected_to_iracing.emit()
 
-        self.ir.shutdown()
-        self.connected_to_iracing.emit(True)
 
+class MainCycle(QObject):
+    """
+    The worker that gets the data from iRacing and processes it
+    Updates GUI via signals
+    Sends notifications to LaMetric device
+    """
 
-class MainWindow(Window):
+    disconnected_from_iracing = pyqtSignal()
+
     def __init__(self):
-        super().__init__("ui/MainWindow.ui")
-
-        self.setFixedWidth(400)
-        self.setFixedHeight(140)
-
-        self.settings_dialog: Optional[SettingsDialog] = None
-
-        sb = self.statusBar()
-        sb.setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
-        sb.setFixedHeight(20)
-        self.setStatusBar(sb)
-        self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
-
-        self.register_widget(self.checkBox_IRating, default=True)
-        self.register_widget(self.checkBox_License, default=True)
-        self.register_widget(self.checkBox_Position, default=True)
-        self.register_widget(self.checkBox_Laps, default=True)
-        self.register_widget(self.checkBox_BestLap, default=True)
-        self.register_widget(self.checkBox_Flags, default=True)
+        super(ConnectToIRacing, self).__init__()
 
         self.ir = IRSDK()
         self.state = State()
         self.sent_data = Data()
         self.data = Data()
-
-        self.threadpool = QThreadPool()
-
-        self.connection_thread = QThread()
-        self.connection_worker = ConnectToIRacing()
-        self.connection_worker.moveToThread(self.connection_thread)
-        self.connection_thread.started.connect(self.connection_worker.run)
-        self.connection_worker.connected_to_iracing.connect(self.connection_thread.quit)
-        self.connection_worker.connected_to_iracing.connect(self.connection_change)
-        self.connection_thread.start()
-
-        self.timerMainCycle = QTimer()
-        self.timerMainCycle.setInterval(500)
-        self.timerMainCycle.timeout.connect(self.main_cycle)
-
-    def connection_change(self, connected_to_iracing):
-        if connected_to_iracing and not self.state.ir_connected:
-            
-            self.ir.startup(silent=True)
-            self.state.ir_connected = True
-            self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
-            self.statusBar().showMessage(('STATUS: iRacing client detected.'))
-
-            self.driver = Driver()
-
-            for dvr in self.ir['DriverInfo']['Drivers']:
-                if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
-                    self.driver.caridx = dvr['CarIdx']
-                    self.driver.name = dvr['UserName']
-                    self.driver.irating = int(dvr['IRating'])
-                    self.driver.license_string = dvr['LicString']
-                    license_letter, safety_rating = dvr['LicString'].split(' ')
-                    self.driver.license_letter = license_letter
-                    self.driver.safety_rating = float(safety_rating)
-
-                    break
-
-            self.lineEdit_IRating.setText(f"{self.driver.irating:,}")
-            self.lineEdit_License.setText(self.driver.license_string)
-
-            self.send_ratings()
-
-            self.timerMainCycle.start()
-
-        elif self.state.ir_connected and not connected_to_iracing:
-            self.state = State()
+                
+    def run(self):
+        self.ir.startup(silent=True)
+        while self.ir.is_initialized and self.ir.is_connected:
+            self.data_collection()
+            self.process_data()
+        else:
             self.ir.shutdown()
-
-            self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
-            self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
-            self.timerMainCycle.stop()            
-
-
-    def check_settings(self):
-        s = QSettings()
-        try:
-            self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
-        except:
-            self.lametric_ip = None
-        try:
-            self.lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
-        except:
-            self.lametric_api_key = None
-
-        if not self.lametric_ip or not self.lametric_api_key:
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Warning)
-            msg.setWindowTitle("Please configure the settings")
-            msg.setText("Please use the Settings window to configure this application with the IP address of our LaMetric Time clock and it's API key.")
-            msg.exec_()
-            self.open_settings_dialog()
+            self.disconnected_from_iracing.emit()
 
     def update_data(self, attr, value):
         """
@@ -368,7 +226,7 @@ class MainWindow(Window):
         except KeyError:
             setattr(self.data, attr, None)
 
-    def data_collection_cycle(self):
+    def data_collection(self):
         """
         Runs on a loop that polls the iRacing client for driver data, flags, other info
         It loads the data into the data object and then the process_data function runs
@@ -517,15 +375,6 @@ class MainWindow(Window):
         else:
             self.send_ratings()
 
-    def main_cycle(self):
-        """
-        Sets up and kicks off the worker collects data from the iRacing client and then processes it
-        """
-        main_cycle_worker = Worker(self.data_collection_cycle)
-        main_cycle_worker.signals.result.connect(self.process_data)
-
-        self.threadpool.start(main_cycle_worker)
-
     def send_ratings(self):
         """
         A wrapper that builds the frames list containing iRating and License / SR info, and triggers the notification send
@@ -661,7 +510,97 @@ class MainWindow(Window):
                 print("Timeout: ", errt)
         else:
             self.open_settings_dialog()
+            
+        else:
+            self.ir.shutdown()
+            self.disconnected_from_iracing.emit(True)
 
+class MainWindow(Window):
+    def __init__(self):
+        super().__init__("ui/MainWindow.ui")
+
+        self.setFixedWidth(400)
+        self.setFixedHeight(140)
+
+        self.settings_dialog: Optional[SettingsDialog] = None
+
+        sb = self.statusBar()
+        sb.setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
+        sb.setFixedHeight(20)
+        self.setStatusBar(sb)
+        self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
+
+        self.register_widget(self.checkBox_IRating, default=True)
+        self.register_widget(self.checkBox_License, default=True)
+        self.register_widget(self.checkBox_Position, default=True)
+        self.register_widget(self.checkBox_Laps, default=True)
+        self.register_widget(self.checkBox_BestLap, default=True)
+        self.register_widget(self.checkBox_Flags, default=True)
+
+        self.connection_thread = QThread()
+        self.connection_worker = ConnectToIRacing()
+        self.connection_worker.moveToThread(self.connection_thread)
+        self.connection_thread.started.connect(self.connection_worker.run)
+        self.connection_worker.connected_to_iracing.connect(self.connection_thread.quit)
+        self.connection_worker.connected_to_iracing.connect(self.connected_to_iracing)
+        self.connection_thread.start()
+
+    def connected_to_iracing(self, connected_to_iracing):
+        if connected_to_iracing and not self.state.ir_connected:
+            
+            self.ir.startup(silent=True)
+            self.state.ir_connected = True
+            self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
+            self.statusBar().showMessage(('STATUS: iRacing client detected.'))
+
+            self.driver = Driver()
+
+            for dvr in self.ir['DriverInfo']['Drivers']:
+                if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
+                    self.driver.caridx = dvr['CarIdx']
+                    self.driver.name = dvr['UserName']
+                    self.driver.irating = int(dvr['IRating'])
+                    self.driver.license_string = dvr['LicString']
+                    license_letter, safety_rating = dvr['LicString'].split(' ')
+                    self.driver.license_letter = license_letter
+                    self.driver.safety_rating = float(safety_rating)
+
+                    break
+
+            self.lineEdit_IRating.setText(f"{self.driver.irating:,}")
+            self.lineEdit_License.setText(self.driver.license_string)
+
+            self.main_thread = QThread()
+            self.main_worker = MainCycle()
+            self.main_worker.moveToThread(self.main_thread)
+            self.main_thread.started.connect(self.main_worker.run)
+            self.main_worker.disconnected_from_iracing.connect(self.main_thread.quit)
+            self.main_worker.disconnected_from_iracing.connect(self.disconnected_from_iracing)
+            self.main_thread.start()    
+
+    def disconnected_from_iracing(self):
+
+        self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
+        self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
+
+    def check_settings(self):
+        s = QSettings()
+        try:
+            self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
+        except:
+            self.lametric_ip = None
+        try:
+            self.lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
+        except:
+            self.lametric_api_key = None
+
+        if not self.lametric_ip or not self.lametric_api_key:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setWindowTitle("Please configure the settings")
+            msg.setText("Please use the Settings window to configure this application with the IP address of our LaMetric Time clock and it's API key.")
+            msg.exec_()
+            self.open_settings_dialog()
 
     @pyqtSlot()
     def on_settingsButton_clicked(self):
