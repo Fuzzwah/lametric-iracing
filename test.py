@@ -323,7 +323,6 @@ class MainCycle(QObject):
         Runs on a loop that polls the iRacing client for driver data, flags, other info
         It loads the data into the data object and then the process_data function runs
         """
-        print("collecting")
         self.ir.freeze_var_buffer_latest()
         if self.ir['PlayerCarClassPosition'] > 0:
             self.update_data('position', f"{int(self.ir['PlayerCarClassPosition'])} / {int(len(self.ir['CarIdxClassPosition']))}")
@@ -348,7 +347,6 @@ class MainCycle(QObject):
         Runs on a loop and processes the data stored in the data object
         Builds a list of frames to send to the notification sender
         """
-        print("processing")
         frames = []
         flag = False
 
@@ -470,7 +468,6 @@ class MainCycle(QObject):
                 self.send_notification(notification_obj)
             self.sent_data = self.data
         else:
-            print("no frames")
             self.send_ratings()
 
     def send_ratings(self):
