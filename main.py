@@ -462,11 +462,6 @@ class MainWindow(Window):
             frames.append(Frame(Icons.repair, "Damage"))
 
         if self.data.best_laptime:
-            if self.sent_data.best_laptime != self.data.best_laptime:
-                print("new best lap")
-                if flag:
-                    print("but flag")
-                    print(frames)
             if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime:
                 self.lineEdit_BestLap.setText(self.data.best_laptime)
                 frames.append(Frame(Icons.purple, self.data.best_laptime))
@@ -475,19 +470,14 @@ class MainWindow(Window):
         if self.data.position:
             if self.checkBox_Position.isChecked() and not flag and self.sent_data.position != self.data.position:
                 self.lineEdit_Position.setText(f"{self.data.position}")
-                event = "gain_position"
+                icon = Icons.gain_position
                 if self.sent_data.position:
                     if self.sent_data.position < self.data.position:
-                        event = "lose_position"
-                frames.append(Frame(event, f"{self.data.position}"))
+                        icon = Icons.lose_position
+                frames.append(Frame(icon, f"{self.data.position}"))
                 self.sent_data.position = self.data.position
 
         if self.data.laps:
-            if self.sent_data.laps != self.data.laps:
-                print("new lap")
-                if flag:
-                    print("but flag")
-                    print(frames)
             if self.checkBox_Laps.isChecked() and not flag and self.sent_data.laps != self.data.laps:
                 self.lineEdit_Laps.setText(f"{self.data.laps}")
                 frames.append(Frame(Icons.laps, f"{self.data.laps}"))
