@@ -307,7 +307,7 @@ class MainCycle(QObject):
                 break
         else:
             self.ir.shutdown()
-            self.disconnected_from_iracing_update.emit()
+            self.disconnected_from_iracing.emit()
 
     def update_data(self, attr, value):
         """
