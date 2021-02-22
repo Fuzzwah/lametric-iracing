@@ -199,11 +199,11 @@ class MainCycle(QObject):
     """
 
     disconnected_from_iracing = pyqtSignal()
-    irating = pyqtSignal(str)
-    license = pyqtSignal(str)
-    laps = pyqtSignal(str)
-    bestlap = pyqtSignal(str)
-    position = pyqtSignal(str)
+    irating_update = pyqtSignal(str)
+    license_update = pyqtSignal(str)
+    laps_update = pyqtSignal(str)
+    best_laptime_update = pyqtSignal(str)
+    position_update = pyqtSignal(str)
 
     def __init__(self, enable_irating, enable_license, enable_flags, enable_laps, enable_bestlap, enable_position):
         super(MainCycle, self).__init__()
@@ -235,8 +235,8 @@ class MainCycle(QObject):
                 self.driver.safety_rating = float(safety_rating)
                 break
 
-        self.irating.emit(f"{self.driver.irating:,}")
-        self.license.emit(self.driver.license_string)
+        self.irating_update.emit(f"{self.driver.irating:,}")
+        self.license_update.emit(self.driver.license_string)
 
         while self.ir.is_initialized and self.ir.is_connected:
             self.data_collection()
@@ -245,7 +245,7 @@ class MainCycle(QObject):
                 break
         else:
             self.ir.shutdown()
-            self.disconnected_from_iracing.emit()
+            self.disconnected_from_iracing_update.emit()
 
     def update_data(self, attr, value):
         """
@@ -376,13 +376,13 @@ class MainCycle(QObject):
 
         if self.data.best_laptime:
             if not flag and self.sent_data.best_laptime != self.data.best_laptime:
-                self.bestlap.emit(self.data.best_laptime)
+                self.best_laptime_update.emit(self.data.best_laptime)
                 if self.enable_bestlap:
                     frames.append(Frame("purple", self.data.best_laptime))
         
         if self.data.position:
             if not flag and self.sent_data.position != self.data.position:
-                self.position.emit(f"{self.data.position}")
+                self.position_update.emit(f"{self.data.position}")
                 event = "gain_position"
                 if self.sent_data.position:
                     if self.sent_data.position < self.data.position:
@@ -392,7 +392,7 @@ class MainCycle(QObject):
 
         if self.data.laps:
             if not flag and self.sent_data.laps != self.data.laps:
-                self.laps.emit(f"{self.data.laps}")
+                self.laps_update.emit(f"{self.data.laps}")
                 if self.enable_laps:
                     frames.append(Frame('laps', f"{self.data.laps}"))
 
@@ -413,11 +413,11 @@ class MainCycle(QObject):
         """
         frames = []
 
-        self.irating.emit(f"{self.driver.irating:,}")
+        self.irating_update.emit(f"{self.driver.irating:,}")
         if self.enable_irating:
             frames.append(Frame("ir", f"{self.driver.irating:,}"))
 
-        self.license.emit(f"{self.driver.safety_rating}")
+        self.license_update.emit(f"{self.driver.safety_rating}")
         if self.enable_license:
             icon = "ir"
             if self.driver.license_letter == 'R':
@@ -593,7 +593,27 @@ class MainWindow(Window):
         self.main_thread.started.connect(self.main_worker.run)
         self.main_worker.disconnected_from_iracing.connect(self.main_thread.quit)
         self.main_worker.disconnected_from_iracing.connect(self.disconnected_from_iracing)
+        self.main_worker.irating_update.connect(self.update_irating)
+        self.main_worker.license_update.connect(self.update_license)
+        self.main_worker.laps_update.connect(self.update_laps)
+        self.main_worker.best_laptime_update.connect(self.update_best_laptime)
+        self.main_worker.position_update.connect(self.update_position)
         self.main_thread.start()
+
+    def update_irating(self, irating_str):
+        self.lineEdit_IRating.setText(irating_str)
+
+    def update_license(self, license_str):
+        self.lineEdit_License.setText(license_str)
+
+    def update_laps(self, laps_str):
+        self.lineEdit_Laps.setText(laps_str)
+
+    def update_best_laptime(self, best_laptime_str):
+        self.lineEdit_BestLap.setText(best_laptime_str)
+
+    def update_position(self, position_str):
+        self.lineEdit_Position.setText(position_str)
 
     def disconnected_from_iracing(self):
 
