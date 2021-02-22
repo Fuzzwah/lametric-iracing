@@ -211,6 +211,7 @@ def call_lametric_api(endpoint, data=None, notification_id=None):
         lametric_api_key = None
 
     if lametric_ip and lametric_api_key:
+        pprint(data)
         lametric_url = f"http://{lametric_ip}:8080/api/v2/device/notifications"
         if endpoint == "delete":
             lametric_url = f"{lametric_url}/{notification_id}"
