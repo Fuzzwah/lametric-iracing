@@ -165,7 +165,7 @@ class State(object):
     car_in_world: bool = False
     last_car_setup_tick: int = -1
     previous_data_sent: Dict = None
-    cycles_start_shown: int = 0
+    start_hidden_shown: bool = False
     ratings_sent: bool = False
 
 
@@ -210,7 +210,7 @@ def call_lametric_api(endpoint, data=None, notification_id=None):
     except:
         lametric_api_key = None
 
-    if lametric_ip and lametric_api_key:
+    if lametric_ip and lametric_api_key and data:
         pprint(data)
         lametric_url = f"http://{lametric_ip}:8080/api/v2/device/notifications"
         if endpoint == "delete":
@@ -354,8 +354,8 @@ class MainCycle(QObject):
 
         if self.enable_flags:
 
-            if self.data.flags & Flags.start_hidden and self.state.cycles_start_shown < 20:
-                self.state.cycles_start_shown += 1
+            if self.data.flags & Flags.start_hidden and not self.state.start_hidden_shown:
+                self.state.start_hidden_shown = True
                 frames.append(Frame(Icons.start_hidden, "Start"))
 
             if self.data.flags & Flags.checkered:
@@ -508,11 +508,12 @@ class MainCycle(QObject):
         """
 
         queue = call_lametric_api("queue")
-        del queue[-1]
+        if queue:
+            del queue[-1]
 
-        for notification in queue:
-            self.dismiss_notification(notification['id'])
-            sleep(0.1)            
+            for notification in queue:
+                self.dismiss_notification(notification['id'])
+                sleep(0.1)            
 
     def dismiss_notification(self, notification_id):
         """
@@ -536,7 +537,8 @@ class MainCycle(QObject):
             res = call_lametric_api("send", data=data)
             if res:
                 if "success" in res:
-                    self.dismiss_prior_notifications()
+                    if data['priority'] == "critical":
+                        self.dismiss_prior_notifications()
                     self.state.previous_data_sent = data
                     return True
                 else:
