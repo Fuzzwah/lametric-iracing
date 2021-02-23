@@ -301,7 +301,7 @@ class MainCycle(QObject):
         self.irating_update.emit(f"{self.driver.irating:,}")
         self.license_update.emit(self.driver.license_string)
 
-        self.dismiss_all_notifications()
+        self.dismiss_notifications()
         self.send_ratings()
         sleep(2)
 
@@ -472,6 +472,8 @@ class MainCycle(QObject):
                 notification_obj = Notification('critical', 'none', Model(1, frames))
                 self.send_notification(notification_obj)
             self.sent_data = self.data
+        else:
+            self.send_ratings()
         sleep(0.2)
 
     def send_ratings(self):
@@ -504,19 +506,7 @@ class MainCycle(QObject):
             notification_obj = Notification('info', 'none', Model(0, frames))
             self.send_notification(notification_obj)
 
-    def dismiss_all_notifications(self):
-        """
-        Dismisses all notifications
-        """
-
-        queue = call_lametric_api("queue")
-
-        if queue:
-            for notification in queue:
-                self.dismiss_notification(notification['id'])
-                sleep(0.1)            
-
-    def dismiss_prior_notifications(self):
+    def dismiss_notifications(self, excluding=None):
         """
         Dismisses any notifications prior to the new one we just sent
         """
@@ -524,11 +514,8 @@ class MainCycle(QObject):
         queue = call_lametric_api("queue")
 
         if queue:
-            del queue[-1]
-            pprint(queue)
-
             for notification in queue:
-                if notification['priority'] == 'critical':
+                if notification['id'] != excluding and notification['model']['cycles'] == 0:
                     self.dismiss_notification(notification['id'])
                     sleep(0.1)            
 
@@ -551,12 +538,11 @@ class MainCycle(QObject):
         """
  
         data = notification_obj.to_dict()
-        pprint(self.state.previous_data_sent)
-        pprint(data)
         if data != self.state.previous_data_sent:
             res = call_lametric_api("send", data=data)
             if "success" in res:
-                self.dismiss_prior_notifications()
+                notification_id = res['success']['id']
+                self.dismiss_notifications(excluding=notification_id)
                 self.state.previous_data_sent = data
             return True
 
