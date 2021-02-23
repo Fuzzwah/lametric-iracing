@@ -3,15 +3,13 @@
 
 import sys
 from pprint import pprint
-from dataclasses import dataclass, field
-from datetime import timedelta
+from dataclasses import dataclass
 from time import sleep
-from random import random
 import json
-import traceback
 from typing import Optional, List, Dict
 
 import requests
+from urllib3 import disable_warnings
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
 from dataclasses_json import dataclass_json
 from PyQt5.QtWidgets import QApplication, QMessageBox
@@ -19,9 +17,6 @@ from PyQt5.QtCore import (
     QCoreApplication,
     QObject,
     QThread,
-    QRunnable,
-    QThreadPool,
-    QTimer,
     QSettings,
     pyqtSlot,
     pyqtSignal
@@ -31,6 +26,8 @@ from pyirsdk import (
     IRSDK,
     Flags
 )
+
+disable_warnings()
 
 def ordinal(num):
     """
@@ -199,7 +196,6 @@ def call_lametric_api(endpoint, data=None, notification_id=None):
         delete - to delete or dismiss a notification (must include notification_id)
         queue - returns a list of current notifications in the queue
     """
-    
     s = QSettings()
     try:
         lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
@@ -210,8 +206,8 @@ def call_lametric_api(endpoint, data=None, notification_id=None):
     except:
         lametric_api_key = None
 
-    if lametric_ip and lametric_api_key and data:
-        lametric_url = f"http://{lametric_ip}:8080/api/v2/device/notifications"
+    if lametric_ip and lametric_api_key:
+        lametric_url = f"https://{lametric_ip}:4343/api/v2/device/notifications"
         if endpoint == "delete":
             lametric_url = f"{lametric_url}/{notification_id}"
         headers = {"Content-Type": "application/json; charset=utf-8"}
@@ -219,28 +215,30 @@ def call_lametric_api(endpoint, data=None, notification_id=None):
         try:
             response = False
             if endpoint == "send":
-                pprint(f"sending {data}")
-                response = requests.post(
-                    lametric_url,
-                    headers=headers,
-                    auth=auth_creds,
-                    json=data,
-                    timeout=1,
-                )
-            elif endpoint == "queue":
+                if data:
+                    response = requests.post(
+                        lametric_url,
+                        headers=headers,
+                        auth=auth_creds,
+                        json=data,
+                        timeout=1,
+                        verify=False
+                    )
+            if endpoint == "queue":
                 response = requests.get(
                     lametric_url,
                     headers=headers,
                     auth=auth_creds,
                     timeout=1,
+                    verify=False
                 )
-            elif endpoint == "delete":
-                print(f"delete {notification_id}")
+            if endpoint == "delete":
                 response = requests.delete(
                     lametric_url,
                     headers=headers,
                     auth=auth_creds,
                     timeout=1,
+                    verify=False
                 )
             if response:
                 res = json.loads(response.text)
@@ -286,7 +284,6 @@ class MainCycle(QObject):
         self.enable_bestlap = enable_bestlap
         self.enable_position = enable_position
 
-
     def run(self):
         self.ir.startup(silent=True)
         for dvr in self.ir['DriverInfo']['Drivers']:
@@ -302,6 +299,9 @@ class MainCycle(QObject):
 
         self.irating_update.emit(f"{self.driver.irating:,}")
         self.license_update.emit(self.driver.license_string)
+
+        self.dismiss_all_notifications()
+        self.send_ratings()
 
         while self.ir.is_initialized and self.ir.is_connected:
             self.data_collection()
@@ -470,8 +470,6 @@ class MainCycle(QObject):
                 notification_obj = Notification('critical', 'none', Model(1, frames))
                 self.send_notification(notification_obj)
             self.sent_data = self.data
-        else:
-            self.send_ratings()
         sleep(0.2)
 
     def send_ratings(self):
@@ -501,9 +499,20 @@ class MainCycle(QObject):
                 icon = Icons.license_letter_p
             frames.append(Frame(icon, f"{self.driver.safety_rating}"))
 
-        if len(frames) > 0:
             notification_obj = Notification('info', 'none', Model(0, frames))
             self.send_notification(notification_obj)
+
+    def dismiss_all_notifications(self):
+        """
+        Dismisses all notifications
+        """
+
+        queue = call_lametric_api("queue")
+
+        if queue:
+            for notification in queue:
+                self.dismiss_notification(notification['id'])
+                sleep(0.1)            
 
     def dismiss_prior_notifications(self):
         """
@@ -511,21 +520,22 @@ class MainCycle(QObject):
         """
 
         queue = call_lametric_api("queue")
-        pprint(f"queue {queue}")
 
         if queue:
             del queue[-1]
+            pprint(queue)
 
             for notification in queue:
-                pprint(f"dismissing {notification['id']}")
-                self.dismiss_notification(notification['id'])
-                sleep(0.1)            
+                if notification['priority'] == 'critical':
+                    self.dismiss_notification(notification['id'])
+                    sleep(0.1)            
 
     def dismiss_notification(self, notification_id):
         """
         Dismisses a single notification by id
         """
 
+        print(f"dismissing {notification_id}")
         res = call_lametric_api("delete", notification_id=notification_id)
         if res:
             return res['success']
@@ -539,19 +549,14 @@ class MainCycle(QObject):
         """
  
         data = notification_obj.to_dict()
+        pprint(self.state.previous_data_sent)
+        pprint(data)
         if data != self.state.previous_data_sent:
             res = call_lametric_api("send", data=data)
-            notification_id = None
-            try:
-                print(res['success']['id'])
-                notification_id = res['success']['id']
-            except KeyError:
-                print("key error")
-                return False
-            self.dismiss_prior_notifications()
-            self.state.previous_data_sent = data
+            if "success" in res:
+                self.dismiss_prior_notifications()
+                self.state.previous_data_sent = data
             return True
-
 
 
 class MainWindow(Window):
@@ -663,21 +668,22 @@ class MainWindow(Window):
         """
         What to do when the test button is clicked
         """
+        queue = call_lametric_api("queue")
 
-        notification_obj = Notification('info', 'none', Model(2, [Frame('green_tick', 'Success')]))
+        notification_obj = Notification('info', 'none', Model(2, [Frame(Icons.green_tick, 'Success')]))
         data = notification_obj.to_dict()
         res = call_lametric_api("send", data=data)
         if res:
             if "success" in res:        
                 msg = QMessageBox()
-                msg.setIcon(QMessageBox.Critical)
+                msg.setIcon(QMessageBox.Information)
                 msg.setWindowTitle("Test Send Results")
                 msg.setText("Successfully sent the test notification to your LaMetric Time clock.\n\nYou're ready to go!")
                 msg.exec_()
                 return True
 
         msg = QMessageBox()
-        msg.setIcon(QMessageBox.Information)
+        msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle("Test Send Results")
         msg.setText("Failed to send the test notification to your LaMetric Time clock. \n\nPlease check the Settings window and ensure that you have the correct IP address and API key.")
         msg.exec_()
