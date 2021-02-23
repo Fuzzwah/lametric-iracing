@@ -219,6 +219,7 @@ def call_lametric_api(endpoint, data=None, notification_id=None):
         try:
             response = False
             if endpoint == "send":
+                pprint(f"sending {data}")
                 response = requests.post(
                     lametric_url,
                     headers=headers,
@@ -234,6 +235,7 @@ def call_lametric_api(endpoint, data=None, notification_id=None):
                     timeout=1,
                 )
             elif endpoint == "delete":
+                print(f"delete {notification_id}")
                 response = requests.delete(
                     lametric_url,
                     headers=headers,
@@ -241,7 +243,8 @@ def call_lametric_api(endpoint, data=None, notification_id=None):
                     timeout=1,
                 )
             if response:
-                return json.loads(response.text)
+                res = json.loads(response.text)
+                return res
         except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
             print("Failed to send data to LaMetric device: ", err)
         except requests.exceptions.RequestException as err:
@@ -464,7 +467,7 @@ class MainCycle(QObject):
                 notification_obj = Notification('critical', 'none', Model(0, frames))
                 self.send_notification(notification_obj)
             else:
-                notification_obj = Notification('critical', 'none', Model(2, frames))
+                notification_obj = Notification('critical', 'none', Model(1, frames))
                 self.send_notification(notification_obj)
             self.sent_data = self.data
         else:
@@ -508,11 +511,13 @@ class MainCycle(QObject):
         """
 
         queue = call_lametric_api("queue")
+        pprint(f"queue {queue}")
+
         if queue:
             del queue[-1]
 
             for notification in queue:
-                pprint(notification)
+                pprint(f"dismissing {notification['id']}")
                 self.dismiss_notification(notification['id'])
                 sleep(0.1)            
 
@@ -536,15 +541,23 @@ class MainCycle(QObject):
         data = notification_obj.to_dict()
         if data != self.state.previous_data_sent:
             res = call_lametric_api("send", data=data)
-            if res:
-                if "success" in res:
-                    self.dismiss_prior_notifications()
-                    self.state.previous_data_sent = data
-                    return True
-                else:
-                    return False
-            else:
+            notification_id = None
+            try:
+                notification_id = res['success']['id']
+            except KeyError:
+                print("key error")
                 return False
+
+            if self.state.previous_data_sent:   
+                if data['priority'] != "info" and self.state.previous_data_sent['model']['cycles'] > 0:
+                    print(f"dismissing {self.state.previous_data_sent}")
+                    self.dismiss_prior_notifications()
+                elif self.state.previous_data_sent['model']['cycles'] == 0:
+                    print(f"dismissing {self.state.previous_data_sent}")
+                    self.dismiss_prior_notifications()
+            self.state.previous_data_sent = data
+            return True
+
 
 
 class MainWindow(Window):
