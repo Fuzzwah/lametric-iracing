@@ -12,6 +12,7 @@ import requests
 from urllib3 import disable_warnings
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
 from dataclasses_json import dataclass_json
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import (
     QCoreApplication,
@@ -302,11 +303,12 @@ class MainCycle(QObject):
 
         self.dismiss_all_notifications()
         self.send_ratings()
+        sleep(2)
 
         while self.ir.is_initialized and self.ir.is_connected:
             self.data_collection()
             self.process_data()
-            sleep(0.3)
+            sleep(0.5)
             if not self.ir.is_initialized and not self.ir.is_connected:
                 break
         else:
@@ -676,7 +678,7 @@ class MainWindow(Window):
         if res:
             if "success" in res:        
                 msg = QMessageBox()
-                msg.setIcon(QMessageBox.Information)
+                msg.setIconPixmap(QPixmap("ui/green_tick.png"))
                 msg.setWindowTitle("Test Send Results")
                 msg.setText("Successfully sent the test notification to your LaMetric Time clock.\n\nYou're ready to go!")
                 msg.exec_()
