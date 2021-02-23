@@ -543,18 +543,12 @@ class MainCycle(QObject):
             res = call_lametric_api("send", data=data)
             notification_id = None
             try:
+                print(res['success']['id'])
                 notification_id = res['success']['id']
             except KeyError:
                 print("key error")
                 return False
-
-            if self.state.previous_data_sent:   
-                if data['priority'] != "info" and self.state.previous_data_sent['model']['cycles'] > 0:
-                    print(f"dismissing {self.state.previous_data_sent}")
-                    self.dismiss_prior_notifications()
-                elif self.state.previous_data_sent['model']['cycles'] == 0:
-                    print(f"dismissing {self.state.previous_data_sent}")
-                    self.dismiss_prior_notifications()
+            self.dismiss_prior_notifications()
             self.state.previous_data_sent = data
             return True
 
