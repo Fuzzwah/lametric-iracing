@@ -469,6 +469,7 @@ class MainCycle(QObject):
             self.sent_data = self.data
         else:
             self.send_ratings()
+        sleep(0.2)
 
     def send_ratings(self):
         """
@@ -498,7 +499,7 @@ class MainCycle(QObject):
             frames.append(Frame(icon, f"{self.driver.safety_rating}"))
 
         if len(frames) > 0:
-            notification_obj = Notification('critical', 'none', Model(0, frames))
+            notification_obj = Notification('info', 'none', Model(0, frames))
             self.send_notification(notification_obj)
 
     def dismiss_prior_notifications(self):
