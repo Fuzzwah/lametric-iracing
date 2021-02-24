@@ -3,7 +3,7 @@
 
 import sys
 from pprint import pprint
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from time import sleep
 import json
 from typing import Optional, List, Dict
@@ -45,6 +45,76 @@ def ordinal(num):
     else:
         suffix = SUFFIXES.get(int(num_str[-1:]), 'th')
     return "{:,}{}".format(num, suffix)
+
+def copy_data(from_obj, to_obj):
+    for field in fields(Data):
+        setattr(to_obj, field.name, getattr(from_obj, field.name))    
+
+def call_lametric_api(endpoint, data=None, notification_id=None):
+    """
+    The function that handles all interactions with the LaMetric clock via API calls
+    Available endpoints are:
+        send - to send a notification (must include data)
+        delete - to delete or dismiss a notification (must include notification_id)
+        queue - returns a list of current notifications in the queue
+    """
+    s = QSettings()
+    try:
+        lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
+    except:
+        lametric_ip = None
+    try:
+        lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
+    except:
+        lametric_api_key = None
+
+    if lametric_ip and lametric_api_key:
+        lametric_url = f"https://{lametric_ip}:4343/api/v2/device/notifications"
+        if endpoint == "delete":
+            lametric_url = f"{lametric_url}/{notification_id}"
+        headers = {"Content-Type": "application/json; charset=utf-8"}
+        auth_creds = ("dev", lametric_api_key)
+        try:
+            response = False
+            if endpoint == "send":
+                if data:
+                    response = requests.post(
+                        lametric_url,
+                        headers=headers,
+                        auth=auth_creds,
+                        json=data,
+                        timeout=1,
+                        verify=False
+                    )
+            if endpoint == "queue":
+                response = requests.get(
+                    lametric_url,
+                    headers=headers,
+                    auth=auth_creds,
+                    timeout=1,
+                    verify=False
+                )
+            if endpoint == "delete":
+                response = requests.delete(
+                    lametric_url,
+                    headers=headers,
+                    auth=auth_creds,
+                    timeout=1,
+                    verify=False
+                )
+            if response:
+                res = json.loads(response.text)
+                return res
+        except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
+            print("Failed to send data to LaMetric device: ", err)
+        except requests.exceptions.RequestException as err:
+            print("Oops: Something Else: ", err)
+        except requests.exceptions.HTTPError as errh:
+            print("Http Error: ", errh)
+        except requests.exceptions.ConnectionError as errc:
+            print("Error Connecting: ", errc)
+        except requests.exceptions.Timeout as errt:
+            print("Timeout: ", errt)
 
 
 @dataclass_json
@@ -189,72 +259,6 @@ class ConnectToIRacing(QObject):
             self.connected_to_iracing.emit()
 
 
-def call_lametric_api(endpoint, data=None, notification_id=None):
-    """
-    The function that handles all interactions with the LaMetric clock via API calls
-    Available endpoints are:
-        send - to send a notification (must include data)
-        delete - to delete or dismiss a notification (must include notification_id)
-        queue - returns a list of current notifications in the queue
-    """
-    s = QSettings()
-    try:
-        lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
-    except:
-        lametric_ip = None
-    try:
-        lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
-    except:
-        lametric_api_key = None
-
-    if lametric_ip and lametric_api_key:
-        lametric_url = f"https://{lametric_ip}:4343/api/v2/device/notifications"
-        if endpoint == "delete":
-            lametric_url = f"{lametric_url}/{notification_id}"
-        headers = {"Content-Type": "application/json; charset=utf-8"}
-        auth_creds = ("dev", lametric_api_key)
-        try:
-            response = False
-            if endpoint == "send":
-                if data:
-                    response = requests.post(
-                        lametric_url,
-                        headers=headers,
-                        auth=auth_creds,
-                        json=data,
-                        timeout=1,
-                        verify=False
-                    )
-            if endpoint == "queue":
-                response = requests.get(
-                    lametric_url,
-                    headers=headers,
-                    auth=auth_creds,
-                    timeout=1,
-                    verify=False
-                )
-            if endpoint == "delete":
-                response = requests.delete(
-                    lametric_url,
-                    headers=headers,
-                    auth=auth_creds,
-                    timeout=1,
-                    verify=False
-                )
-            if response:
-                res = json.loads(response.text)
-                return res
-        except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
-            print("Failed to send data to LaMetric device: ", err)
-        except requests.exceptions.RequestException as err:
-            print("Oops: Something Else: ", err)
-        except requests.exceptions.HTTPError as errh:
-            print("Http Error: ", errh)
-        except requests.exceptions.ConnectionError as errc:
-            print("Error Connecting: ", errc)
-        except requests.exceptions.Timeout as errt:
-            print("Timeout: ", errt)
-
 class MainCycle(QObject):
     """
     The worker that gets the data from iRacing and processes it
@@ -330,22 +334,27 @@ class MainCycle(QObject):
         It loads the data into the data object and then the process_data function runs
         """
         self.ir.freeze_var_buffer_latest()
-        if self.ir['PlayerCarClassPosition'] > 0:
+        
+        if int(self.ir['PlayerCarClassPosition']) > 0:
             self.update_data('position', f"{int(self.ir['PlayerCarClassPosition'])} / {int(len(self.ir['CarIdxClassPosition']))}")
-        if self.ir['LapBestLapTime'] > 0:
+        
+        if float(self.ir['LapBestLapTime']) > 0:
             minutes, seconds = divmod(float(self.ir['LapBestLapTime']), 60)
             if seconds < 10:
                 bestlaptime = f"{minutes:.0f}:0{seconds:.3f}"
             else:
                 bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
             self.update_data('best_laptime', bestlaptime)
+
         if int(self.ir['LapCompleted']) > 0:
             if int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx']) > 32000:
                 laps_total = "∞"
             else:
                 laps_total = int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx'])
             self.update_data('laps', f"{int(self.ir['LapCompleted'])} / {laps_total}")
+        
         self.update_data('flags', int(self.ir['SessionFlags']))
+        
         self.ir.unfreeze_var_buffer_latest()
 
     def process_data(self):
@@ -471,7 +480,7 @@ class MainCycle(QObject):
             else:
                 notification_obj = Notification('critical', 'none', Model(1, frames))
                 self.send_notification(notification_obj)
-            self.sent_data = self.data
+            copy_data(self.data, self.sent_data)
         else:
             self.send_ratings()
         sleep(0.2)
@@ -524,7 +533,6 @@ class MainCycle(QObject):
         Dismisses a single notification by id
         """
 
-        print(f"dismissing {notification_id}")
         res = call_lametric_api("delete", notification_id=notification_id)
         if res:
             return res['success']
