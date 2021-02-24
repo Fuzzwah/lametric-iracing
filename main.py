@@ -3,24 +3,21 @@
 
 import sys
 from pprint import pprint
-from dataclasses import dataclass, field
-from datetime import timedelta
+from dataclasses import dataclass, fields
 from time import sleep
-from random import random
 import json
-import traceback
 from typing import Optional, List, Dict
 
 import requests
+from urllib3 import disable_warnings
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
 from dataclasses_json import dataclass_json
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import (
     QCoreApplication,
     QObject,
-    QRunnable,
-    QThreadPool,
-    QTimer,
+    QThread,
     QSettings,
     pyqtSlot,
     pyqtSignal
@@ -30,6 +27,8 @@ from pyirsdk import (
     IRSDK,
     Flags
 )
+
+disable_warnings()
 
 def ordinal(num):
     """
@@ -46,6 +45,76 @@ def ordinal(num):
     else:
         suffix = SUFFIXES.get(int(num_str[-1:]), 'th')
     return "{:,}{}".format(num, suffix)
+
+def copy_data(from_obj, to_obj):
+    for field in fields(Data):
+        setattr(to_obj, field.name, getattr(from_obj, field.name))    
+
+def call_lametric_api(endpoint, data=None, notification_id=None):
+    """
+    The function that handles all interactions with the LaMetric clock via API calls
+    Available endpoints are:
+        send - to send a notification (must include data)
+        delete - to delete or dismiss a notification (must include notification_id)
+        queue - returns a list of current notifications in the queue
+    """
+    s = QSettings()
+    try:
+        lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
+    except:
+        lametric_ip = None
+    try:
+        lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
+    except:
+        lametric_api_key = None
+
+    if lametric_ip and lametric_api_key:
+        lametric_url = f"https://{lametric_ip}:4343/api/v2/device/notifications"
+        if endpoint == "delete":
+            lametric_url = f"{lametric_url}/{notification_id}"
+        headers = {"Content-Type": "application/json; charset=utf-8"}
+        auth_creds = ("dev", lametric_api_key)
+        try:
+            response = False
+            if endpoint == "send":
+                if data:
+                    response = requests.post(
+                        lametric_url,
+                        headers=headers,
+                        auth=auth_creds,
+                        json=data,
+                        timeout=1,
+                        verify=False
+                    )
+            if endpoint == "queue":
+                response = requests.get(
+                    lametric_url,
+                    headers=headers,
+                    auth=auth_creds,
+                    timeout=1,
+                    verify=False
+                )
+            if endpoint == "delete":
+                response = requests.delete(
+                    lametric_url,
+                    headers=headers,
+                    auth=auth_creds,
+                    timeout=1,
+                    verify=False
+                )
+            if response:
+                res = json.loads(response.text)
+                return res
+        except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
+            print("Failed to send data to LaMetric device: ", err)
+        except requests.exceptions.RequestException as err:
+            print("Oops: Something Else: ", err)
+        except requests.exceptions.HTTPError as errh:
+            print("Http Error: ", errh)
+        except requests.exceptions.ConnectionError as errc:
+            print("Error Connecting: ", errc)
+        except requests.exceptions.Timeout as errt:
+            print("Timeout: ", errt)
 
 
 @dataclass_json
@@ -125,6 +194,7 @@ class Icons(object):
     blue: str = 'a43495'
     debris: str = 'a43497'
     green_held: str = 'i43445'
+    one_lap_to_green: str = 'i43445'
     random_waving: str = 'a43458'
     caution: str = 'i43439'
     caution_waving: str = 'a43439'
@@ -134,7 +204,6 @@ class Icons(object):
     repair: str = 'a43500'
     # we don't have icons for these yet
     crossed: str = ir
-    one_lap_to_green: str = ir
     ten_to_go: str = ir
     five_to_go: str = ir
 
@@ -164,78 +233,326 @@ class State(object):
     car_in_world: bool = False
     last_car_setup_tick: int = -1
     previous_data_sent: Dict = None
-    cycles_start_shown: int = 0
+    start_hidden_shown: bool = False
     ratings_sent: bool = False
 
 
-class WorkerSignals(QObject):
-    '''
-    Defines the signals available from a running worker thread.
+class ConnectToIRacing(QObject):
+    """
+    The worker that monitors if the app is connected to iRacing
+    """
 
-    Supported signals are:
+    connected_to_iracing = pyqtSignal()
 
-    finished
-        No data
+    def __init__(self):
+        super(ConnectToIRacing, self).__init__()
 
-    error
-        `tuple` (exctype, value, traceback.format_exc() )
-
-    result
-        `object` data returned from processing, anything
-
-    progress
-        `int` indicating % progress
-
-    '''
-    finished = pyqtSignal()
-    error = pyqtSignal(tuple)
-    result = pyqtSignal(object)
-    #progress = pyqtSignal(int)
-
-
-class Worker(QRunnable):
-    '''
-    Worker thread
-
-    Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
-
-    :param callback: The function callback to run on this worker thread. Supplied args and
-                     kwargs will be passed through to the runner.
-    :type callback: function
-    :param args: Arguments to pass to the callback function
-    :param kwargs: Keywords to pass to the callback function
-
-    '''
-
-    def __init__(self, fn, *args, **kwargs):
-        super(Worker, self).__init__()
-
-        # Store constructor arguments (re-used for processing)
-        self.fn = fn
-        self.args = args
-        self.kwargs = kwargs
-        self.signals = WorkerSignals()
-
-        # Add the callback to our kwargs
-        #self.kwargs['progress_callback'] = self.signals.progress
-
-    @pyqtSlot()
+        self.ir = IRSDK()
+                
     def run(self):
-        '''
-        Initialise the runner function with passed args, kwargs.
-        '''
-
-        # Retrieve args/kwargs here; and fire processing using them
-        try:
-            result = self.fn(*self.args, **self.kwargs)
-        except:
-            traceback.print_exc()
-            exctype, value = sys.exc_info()[:2]
-            self.signals.error.emit((exctype, value, traceback.format_exc()))
+        while not self.ir.is_initialized and not self.ir.is_connected:
+            self.ir.startup(silent=True)
+            if not self.ir.is_initialized and not self.ir.is_connected:
+                sleep(5)
         else:
-            self.signals.result.emit(result)  # Return the result of the processing
-        finally:
-            self.signals.finished.emit()  # Done
+            self.ir.shutdown()
+            self.connected_to_iracing.emit()
+
+
+class MainCycle(QObject):
+    """
+    The worker that gets the data from iRacing and processes it
+    Updates GUI via signals
+    Sends notifications to LaMetric device
+    """
+
+    disconnected_from_iracing = pyqtSignal()
+    irating_update = pyqtSignal(str)
+    license_update = pyqtSignal(str)
+    laps_update = pyqtSignal(str)
+    best_laptime_update = pyqtSignal(str)
+    position_update = pyqtSignal(str)
+
+    def __init__(self, enable_irating, enable_license, enable_flags, enable_laps, enable_bestlap, enable_position):
+        super(MainCycle, self).__init__()
+
+        self.ir = IRSDK()
+        self.state = State()
+        self.sent_data = Data()
+        self.data = Data()
+        self.driver = Driver()
+
+        self.enable_irating = enable_irating
+        self.enable_license = enable_license
+        self.enable_flags = enable_flags
+        self.enable_laps = enable_laps
+        self.enable_bestlap = enable_bestlap
+        self.enable_position = enable_position
+
+    def run(self):
+        self.ir.startup(silent=True)
+        for dvr in self.ir['DriverInfo']['Drivers']:
+            if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
+                self.driver.caridx = dvr['CarIdx']
+                self.driver.name = dvr['UserName']
+                self.driver.irating = int(dvr['IRating'])
+                self.driver.license_string = dvr['LicString']
+                license_letter, safety_rating = dvr['LicString'].split(' ')
+                self.driver.license_letter = license_letter
+                self.driver.safety_rating = float(safety_rating)
+                break
+
+        self.irating_update.emit(f"{self.driver.irating:,}")
+        self.license_update.emit(self.driver.license_string)
+
+        self.dismiss_notifications()
+        self.send_ratings()
+        sleep(2)
+
+        while self.ir.is_initialized and self.ir.is_connected:
+            self.data_collection()
+            self.process_data()
+            sleep(0.5)
+            if not self.ir.is_initialized and not self.ir.is_connected:
+                break
+        else:
+            self.ir.shutdown()
+            self.disconnected_from_iracing.emit()
+
+    def update_data(self, attr, value):
+        """
+        A little wrapper to handle updating the information in the Data object
+        """
+        try:
+            setattr(self.data, attr, value)
+        except KeyError:
+            setattr(self.data, attr, None)
+
+    def data_collection(self):
+        """
+        Runs on a loop that polls the iRacing client for driver data, flags, other info
+        It loads the data into the data object and then the process_data function runs
+        """
+        self.ir.freeze_var_buffer_latest()
+        
+        if int(self.ir['PlayerCarClassPosition']) > 0:
+            self.update_data('position', f"{int(self.ir['PlayerCarClassPosition'])} / {int(len(self.ir['CarIdxClassPosition']))}")
+        
+        if float(self.ir['LapBestLapTime']) > 0:
+            minutes, seconds = divmod(float(self.ir['LapBestLapTime']), 60)
+            if seconds < 10:
+                bestlaptime = f"{minutes:.0f}:0{seconds:.3f}"
+            else:
+                bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
+            self.update_data('best_laptime', bestlaptime)
+
+        if int(self.ir['LapCompleted']) > 0:
+            if int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx']) > 32000:
+                laps_total = "∞"
+            else:
+                laps_total = int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx'])
+            self.update_data('laps', f"{int(self.ir['LapCompleted'])} / {laps_total}")
+        
+        self.update_data('flags', int(self.ir['SessionFlags']))
+        
+        self.ir.unfreeze_var_buffer_latest()
+
+    def process_data(self):
+        """
+        Runs on a loop and processes the data stored in the data object
+        Builds a list of frames to send to the notification sender
+        """
+        frames = []
+        flag = False
+
+        if self.enable_flags:
+
+            if self.data.flags & Flags.start_hidden and not self.state.start_hidden_shown:
+                self.state.start_hidden_shown = True
+                frames.append(Frame(Icons.start_hidden, "Start"))
+
+            if self.data.flags & Flags.checkered:
+                flag = True
+                frames.append(Frame(Icons.checkered, "Finish"))
+
+            if self.data.flags & Flags.white:
+                flag = True
+                frames.append(Frame(Icons.white, "White"))
+
+            if self.data.flags & Flags.green:
+                flag = True
+                frames.append(Frame(Icons.green, "Green"))
+
+            if self.data.flags & Flags.yellow:
+                flag = True
+                frames.append(Frame(Icons.yellow, "Yellow"))
+
+            if self.data.flags & Flags.red:
+                flag = True
+                frames.append(Frame(Icons.red, "Red"))
+
+            if self.data.flags & Flags.blue:
+                flag = True
+                frames.append(Frame(Icons.blue, "Blue"))
+
+            if self.data.flags & Flags.debris:
+                flag = True
+                frames.append(Frame(Icons.debris, "Debris"))
+
+            if self.data.flags & Flags.crossed:
+                flag = True
+                frames.append(Frame(Icons.crossed, "Crossed"))
+
+            if self.data.flags & Flags.yellow_waving:
+                flag = True
+                frames.append(Frame(Icons.yellow_waving, "Yellow"))
+
+            if self.data.flags & Flags.one_lap_to_green:
+                flag = True
+                frames.append(Frame(Icons.one_lap_to_green, "in 1 lap"))
+
+            if self.data.flags & Flags.green_held:
+                flag = True
+                frames.append(Frame(Icons.green_held, "Green"))
+
+            if self.data.flags & Flags.ten_to_go:
+                flag = True
+                frames.append(Frame(Icons.ten_to_go, "10 to go"))
+
+            if self.data.flags & Flags.five_to_go:
+                flag = True
+                frames.append(Frame(Icons.five_to_go, "5 to go"))
+
+            if self.data.flags & Flags.random_waving:
+                flag = True
+                frames.append(Frame(Icons.random_waving, "Random"))
+
+            if self.data.flags & Flags.caution:
+                flag = True
+                frames.append(Frame(Icons.caution, "Caution"))
+
+            if self.data.flags & Flags.caution_waving:
+                flag = True
+                frames.append(Frame(Icons.caution_waving, "Caution"))
+
+            if self.data.flags & Flags.black:
+                flag = True
+                frames.append(Frame(Icons.black, "Black"))
+
+            if self.data.flags & Flags.disqualify:
+                flag = True
+                frames.append(Frame(Icons.disqualify, "DQ"))
+
+            if self.data.flags & Flags.furled:
+                flag = True
+                frames.append(Frame(Icons.furled, "Warning"))
+
+            if self.data.flags & Flags.repair:
+                flag = True
+                frames.append(Frame(Icons.repair, "Damage"))
+
+        if self.data.best_laptime:
+            if not flag and self.sent_data.best_laptime != self.data.best_laptime:
+                self.best_laptime_update.emit(self.data.best_laptime)
+                if self.enable_bestlap:
+                    frames.append(Frame(Icons.purple, self.data.best_laptime))
+        
+        if self.data.position:
+            if not flag and self.sent_data.position != self.data.position:
+                self.position_update.emit(f"{self.data.position}")
+                icon = Icons.gain_position
+                if self.sent_data.position:
+                    if self.sent_data.position < self.data.position:
+                        icon = Icons.lose_position
+                if self.enable_position:
+                    frames.append(Frame(icon, f"{self.data.position}"))
+
+        if self.data.laps:
+            if not flag and self.sent_data.laps != self.data.laps:
+                self.laps_update.emit(f"{self.data.laps}")
+                if self.enable_laps:
+                    frames.append(Frame(Icons.laps, f"{self.data.laps}"))
+
+        if len(frames) > 0:
+            if flag:
+                notification_obj = Notification('critical', 'none', Model(0, frames))
+                self.send_notification(notification_obj)
+            else:
+                notification_obj = Notification('critical', 'none', Model(1, frames))
+                self.send_notification(notification_obj)
+            copy_data(self.data, self.sent_data)
+        else:
+            self.send_ratings()
+        sleep(0.2)
+
+    def send_ratings(self):
+        """
+        A wrapper that builds the frames list containing iRating and License / SR info, and triggers the notification send
+        """
+        frames = []
+
+        self.irating_update.emit(f"{self.driver.irating:,}")
+        if self.enable_irating:
+            frames.append(Frame(Icons.ir, f"{self.driver.irating:,}"))
+
+        self.license_update.emit(f"{self.driver.safety_rating}")
+        if self.enable_license:
+            icon = Icons.ir
+            if self.driver.license_letter == 'R':
+                icon = Icons.license_letter_r
+            elif self.driver.license_letter == 'D':
+                icon = Icons.license_letter_d
+            elif self.driver.license_letter == 'C':
+                icon = Icons.license_letter_c
+            elif self.driver.license_letter == 'B':
+                icon = Icons.license_letter_b
+            elif self.driver.license_letter == 'A':
+                icon = Icons.license_letter_a
+            elif self.driver.license_letter == 'P':
+                icon = Icons.license_letter_p
+            frames.append(Frame(icon, f"{self.driver.safety_rating}"))
+
+            notification_obj = Notification('info', 'none', Model(0, frames))
+            self.send_notification(notification_obj)
+
+    def dismiss_notifications(self, excluding=None):
+        """
+        Dismisses any notifications prior to the new one we just sent
+        """
+
+        queue = call_lametric_api("queue")
+
+        if queue:
+            for notification in queue:
+                if notification['id'] != excluding and notification['model']['cycles'] == 0:
+                    self.dismiss_notification(notification['id'])
+                    sleep(0.1)            
+
+    def dismiss_notification(self, notification_id):
+        """
+        Dismisses a single notification by id
+        """
+
+        res = call_lametric_api("delete", notification_id=notification_id)
+        if res:
+            return res['success']
+        else:
+            return False
+
+    def send_notification(self, notification_obj):
+        """
+        Accepts a Notification object triggers the sending of a notification via LaMetic API
+        Note: the function will not send the same notification multiple times in a row
+        """
+ 
+        data = notification_obj.to_dict()
+        if data != self.state.previous_data_sent:
+            res = call_lametric_api("send", data=data)
+            if "success" in res:
+                notification_id = res['success']['id']
+                self.dismiss_notifications(excluding=notification_id)
+                self.state.previous_data_sent = data
+            return True
 
 
 class MainWindow(Window):
@@ -260,25 +577,58 @@ class MainWindow(Window):
         self.register_widget(self.checkBox_BestLap, default=True)
         self.register_widget(self.checkBox_Flags, default=True)
 
-        self.ir = IRSDK()
-        self.state = State()
-        self.sent_data = Data()
-        self.data = Data()
+        self.connection_thread = QThread()
+        self.connection_worker = ConnectToIRacing()
+        self.connection_worker.moveToThread(self.connection_thread)
+        self.connection_thread.started.connect(self.connection_worker.run)
+        self.connection_worker.connected_to_iracing.connect(self.connection_thread.quit)
+        self.connection_worker.connected_to_iracing.connect(self.connected_to_iracing)
+        self.connection_thread.start()
 
-        self.threadpool = QThreadPool()
+    def connected_to_iracing(self):
+           
+        self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
+        self.statusBar().showMessage(('STATUS: iRacing client detected.'))
 
-        self.timerConnectionMonitor = QTimer()
-        self.timerConnectionMonitor.setInterval(5000)
-        self.timerConnectionMonitor.timeout.connect(self.irsdkConnectionMonitor)
+        enable_irating = self.checkBox_IRating.isChecked()
+        enable_license = self.checkBox_License.isChecked()
+        enable_flags = self.checkBox_Flags.isChecked()
+        enable_laps = self.checkBox_Laps.isChecked()
+        enable_bestlap = self.checkBox_BestLap.isChecked()
+        enable_position = self.checkBox_Position.isChecked()
 
-        self.timerMainCycle = QTimer()
-        self.timerMainCycle.setInterval(500)
-        self.timerMainCycle.timeout.connect(self.main_cycle)
+        self.main_thread = QThread()
+        self.main_worker = MainCycle(enable_irating, enable_license, enable_flags, enable_laps, enable_bestlap, enable_position)
+        self.main_worker.moveToThread(self.main_thread)
+        self.main_thread.started.connect(self.main_worker.run)
+        self.main_worker.disconnected_from_iracing.connect(self.main_thread.quit)
+        self.main_worker.disconnected_from_iracing.connect(self.disconnected_from_iracing)
+        self.main_worker.irating_update.connect(self.update_irating)
+        self.main_worker.license_update.connect(self.update_license)
+        self.main_worker.laps_update.connect(self.update_laps)
+        self.main_worker.best_laptime_update.connect(self.update_best_laptime)
+        self.main_worker.position_update.connect(self.update_position)
+        self.main_thread.start()
 
-        if self.irsdk_connection_check():
-            self.irsdk_connection_controller(True)
+    def update_irating(self, irating_str):
+        self.lineEdit_IRating.setText(irating_str)
 
-        self.timerConnectionMonitor.start()
+    def update_license(self, license_str):
+        self.lineEdit_License.setText(license_str)
+
+    def update_laps(self, laps_str):
+        self.lineEdit_Laps.setText(laps_str)
+
+    def update_best_laptime(self, best_laptime_str):
+        self.lineEdit_BestLap.setText(best_laptime_str)
+
+    def update_position(self, position_str):
+        self.lineEdit_Position.setText(position_str)
+
+    def disconnected_from_iracing(self):
+
+        self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
+        self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
 
     def check_settings(self):
         s = QSettings()
@@ -297,389 +647,7 @@ class MainWindow(Window):
             msg.setWindowTitle("Please configure the settings")
             msg.setText("Please use the Settings window to configure this application with the IP address of our LaMetric Time clock and it's API key.")
             msg.exec_()
-            self.open_settings_dialog()        
-
-    # here we check if we are connected to iracing
-    # so we can retrieve some data
-    def irsdk_connection_check(self):
-        """
-        Checks to see if the irsdk object is connected to the iRacing client
-        """
-        if self.state.ir_connected and not (self.ir.is_initialized and self.ir.is_connected):
-            return False
-        elif not self.state.ir_connected and self.ir.startup(silent=True) and self.ir.is_initialized and self.ir.is_connected:
-            return True
-        elif self.ir.is_initialized and self.ir.is_connected:
-            return True
-
-    def irsdk_connection_controller(self, now_connected):
-        """
-        Handles the triggering of things to do when the irsdk becomes connected / disconnected to the iRacing client
-        """
-        if now_connected and not self.state.ir_connected:
-            self.onConnection()
-        elif not now_connected and self.state.ir_connected:
-            self.onDisconnection()
-
-    def irsdkConnectionMonitor(self):
-        """
-        Sets up and kicks off the worker that monitors the state of the connection to the iRacing client
-        """
-        monitor_worker = Worker(self.irsdk_connection_check)
-        monitor_worker.signals.result.connect(self.irsdk_connection_controller)
-
-        self.threadpool.start(monitor_worker)
-
-    def update_data(self, attr, value):
-        """
-        A little wrapper to handle updating the information in the Data object
-        """
-        try:
-            setattr(self.data, attr, value)
-        except KeyError:
-            setattr(self.data, attr, None)
-
-    def data_collection_cycle(self):
-        """
-        Runs on a loop that polls the iRacing client for driver data, flags, other info
-        It loads the data into the data object and then the process_data function runs
-        """
-        if not self.irsdk_connection_check():
-            self.irsdk_connection_controller(False)
-        else:
-            self.ir.freeze_var_buffer_latest()
-            if self.ir['PlayerCarClassPosition'] > 0:
-                self.update_data('position', f"{int(self.ir['PlayerCarClassPosition'])} / {int(len(self.ir['CarIdxClassPosition']))}")
-            if self.ir['LapBestLapTime'] > 0:
-                minutes, seconds = divmod(float(self.ir['LapBestLapTime']), 60)
-                if seconds < 10:
-                    bestlaptime = f"{minutes:.0f}:0{seconds:.3f}"
-                else:
-                    bestlaptime = f"{minutes:.0f}:{seconds:.3f}"
-                self.update_data('best_laptime', bestlaptime)
-            if int(self.ir['LapCompleted']) > 0:
-                if int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx']) > 32000:
-                    laps_total = "∞"
-                else:
-                    laps_total = int(self.ir['LapCompleted']) + int(self.ir['SessionLapsRemainEx'])
-                self.update_data('laps', f"{int(self.ir['LapCompleted'])} / {laps_total}")
-            self.update_data('flags', int(self.ir['SessionFlags']))
-            self.ir.unfreeze_var_buffer_latest()
-
-    def process_data(self):
-        """
-        Runs on a loop and processes the data stored in the data object
-        Builds a list of frames to send to the notification sender
-        """
-        frames = []
-        flag = False
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.start_hidden and self.state.cycles_start_shown < 20:
-            self.state.cycles_start_shown += 1
-            frames.append(Frame("start_hidden", "Start"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.checkered:
-            flag = True
-            frames.append(Frame("checkered", "Finish"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.white:
-            flag = True
-            frames.append(Frame("white", "White"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green:
-            flag = True
-            frames.append(Frame("green", "Green"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow:
-            flag = True
-            frames.append(Frame("yellow", "Yellow"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.red:
-            flag = True
-            frames.append(Frame("red", "Red"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.blue:
-            flag = True
-            frames.append(Frame("blue", "Blue"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.debris:
-            flag = True
-            frames.append(Frame("debris", "Debris"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.crossed:
-            flag = True
-            frames.append(Frame("crossed", "Crossed"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.yellow_waving:
-            flag = True
-            frames.append(Frame("yellow_waving", "Yellow"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.one_lap_to_green:
-            flag = True
-            frames.append(Frame("one_lap_to_green", "1 Lap"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.green_held:
-            flag = True
-            frames.append(Frame("green_held", "Green"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.ten_to_go:
-            flag = True
-            frames.append(Frame("ten_to_go", "10 to go"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.five_to_go:
-            flag = True
-            frames.append(Frame("five_to_go", "5 to go"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.random_waving:
-            flag = True
-            frames.append(Frame("random_waving", "Random"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution:
-            flag = True
-            frames.append(Frame("caution", "Caution"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.caution_waving:
-            flag = True
-            frames.append(Frame("caution_waving", "Caution"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.black:
-            flag = True
-            frames.append(Frame("black", "Black"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.disqualify:
-            flag = True
-            frames.append(Frame("disqualify", "DQ"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.furled:
-            flag = True
-            frames.append(Frame("furled", "Warning"))
-
-        if self.checkBox_Flags.isChecked() and self.data.flags & Flags.repair:
-            flag = True
-            frames.append(Frame("repair", "Damage"))
-
-        if self.data.best_laptime:
-            if self.checkBox_BestLap.isChecked() and not flag and self.sent_data.best_laptime != self.data.best_laptime:
-                self.lineEdit_BestLap.setText(self.data.best_laptime)
-                frames.append(Frame("purple", self.data.best_laptime))
-        
-        if self.data.position:
-            if self.checkBox_Position.isChecked() and not flag and self.sent_data.position != self.data.position:
-                self.lineEdit_Position.setText(f"{self.data.position}")
-                event = "gain_position"
-                if self.sent_data.position:
-                    if self.sent_data.position < self.data.position:
-                        event = "lose_position"
-                frames.append(Frame(event, f"{self.data.position}"))
-
-        if self.data.laps:
-            if self.checkBox_Laps.isChecked() and not flag and self.sent_data.laps != self.data.laps:
-                self.lineEdit_Laps.setText(f"{self.data.laps}")
-                frames.append(Frame('laps', f"{self.data.laps}"))
-
-        if len(frames) > 0:
-            if flag:
-                notification_obj = Notification('critical', 'none', Model(0, frames))
-                self.send_notification(notification_obj)
-            else:
-                notification_obj = Notification('critical', 'none', Model(2, frames))
-                self.send_notification(frames, cycles=2)
-            self.sent_data = self.data
-        else:
-            self.send_ratings()
-
-    def main_cycle(self):
-        """
-        Sets up and kicks off the worker collects data from the iRacing client and then processes it
-        """
-        main_cycle_worker = Worker(self.data_collection_cycle)
-        main_cycle_worker.signals.result.connect(self.process_data)
-
-        self.threadpool.start(main_cycle_worker)
-
-    def onConnection(self):
-        """
-        When the connection to iRacing client becomes active, this function runs
-        It updates the status bar, grabs initial driver info, triggers to endless ratings notifications, and starts the main cycle loop
-        """
-        try:
-            self.timerConnectionMonitor.stop()
-        except:
-            pass
-        self.state.ir_connected = True
-        self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
-        self.statusBar().showMessage(('STATUS: iRacing client detected.'))
-
-        self.driver = Driver()
-
-        for dvr in self.ir['DriverInfo']['Drivers']:
-            if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
-                self.driver.caridx = dvr['CarIdx']
-                self.driver.name = dvr['UserName']
-                self.driver.irating = int(dvr['IRating'])
-                self.driver.license_string = dvr['LicString']
-                license_letter, safety_rating = dvr['LicString'].split(' ')
-                self.driver.license_letter = license_letter
-                self.driver.safety_rating = float(safety_rating)
-
-                break
-
-        self.lineEdit_IRating.setText(f"{self.driver.irating:,}")
-        self.lineEdit_License.setText(self.driver.license_string)
-
-        self.send_ratings()
-
-        self.timerMainCycle.start()
-
-    def onDisconnection(self):
-        """
-        When the connection to iRacing client is lost, this function runs
-        Updates the status bar, stops the main cycle
-        """
-        self.state = State()
-        self.ir.shutdown()
-
-        self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
-        self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
-        self.timerMainCycle.stop()
-        self.timerConnectionMonitor.start()
-
-    def send_ratings(self):
-        """
-        A wrapper that builds the frames list containing iRating and License / SR info, and triggers the notification send
-        """
-        frames = []
-
-        if self.checkBox_IRating.isChecked():
-            frames.append(Frame("ir", f"{self.driver.irating:,}"))
-
-        if self.checkBox_License.isChecked():
-            icon = "ir"
-            if self.driver.license_letter == 'R':
-                icon = "license_letter_r"
-            elif self.driver.license_letter == 'D':
-                icon = "license_letter_d"
-            elif self.driver.license_letter == 'C':
-                icon = "license_letter_c"
-            elif self.driver.license_letter == 'B':
-                icon = "license_letter_b"
-            elif self.driver.license_letter == 'A':
-                icon = "license_letter_a"
-            elif self.driver.license_letter == 'P':
-                icon = "license_letter_p"
-
-            frames.append(Frame(icon, f"{self.driver.safety_rating}"))
-
-        if len(frames) > 0:
-            notification_obj = Notification('info', 'none', Model(0, frames))
-            self.send_notification(notification_obj)
-
-    def dismiss_prior_notifications(self):
-        """
-        Dismisses any notifications prior to the new one we just sent
-        """
-
-        queue = self.call_lametric_api("queue")
-        del queue[-1]
-
-        for notification in queue:
-            self.dismiss_notification(notification['id'])
-            sleep(0.1)            
-
-    def dismiss_notification(self, notification_id):
-        """
-        Dismisses a single notification by id
-        """
-
-        res = self.call_lametric_api("delete", notification_id=notification_id)
-        if res:
-            return res['success']
-        else:
-            return False
-
-    def send_notification(self, notification_obj):
-        """
-        Accepts a Notification object triggers the sending of a notification via LaMetic API
-        Note: the function will not send the same notification multiple times in a row
-        """
- 
-        data = notification_obj.to_dict()
-        if data != self.state.previous_data_sent:
-            res = self.call_lametric_api("send", data=data)
-            if res:
-                if "success" in res:
-                    self.dismiss_prior_notifications()
-                    self.state.previous_data_sent = data
-                    return True
-                else:
-                    return False
-            else:
-                return False
-
-    def call_lametric_api(self, endpoint, data=None, notification_id=None):
-        """
-        The function that handles all interactions with the LaMetric clock via API calls
-        Available endpoints are:
-            send - to send a notification (must include data)
-            delete - to delete or dismiss a notification (must include notification_id)
-            queue - returns a list of current notifications in the queue
-        """
-        
-        s = QSettings()
-        try:
-            self.lametric_ip = s.value('lametric-iracing/Settings/laMetricTimeIPLineEdit')
-        except:
-            self.lametric_ip = None
-        try:
-            self.lametric_api_key = s.value('lametric-iracing/Settings/aPIKeyLineEdit')
-        except:
-            self.lametric_api_key = None
-
-        if self.lametric_ip and self.lametric_api_key:
-            lametric_url = f"http://{self.lametric_ip}:8080/api/v2/device/notifications"
-            if endpoint == "delete":
-                lametric_url = f"{lametric_url}/{notification_id}"
-            headers = {"Content-Type": "application/json; charset=utf-8"}
-            basicAuthCredentials = ("dev", self.lametric_api_key)
-            try:
-                response = False
-                if endpoint == "send":
-                    response = requests.post(
-                        lametric_url,
-                        headers=headers,
-                        auth=basicAuthCredentials,
-                        json=data,
-                        timeout=1,
-                    )
-                elif endpoint == "queue":
-                    response = requests.get(
-                        lametric_url,
-                        headers=headers,
-                        auth=basicAuthCredentials,
-                        timeout=1,
-                    )
-                elif endpoint == "delete":
-                    response = requests.delete(
-                        lametric_url,
-                        headers=headers,
-                        auth=basicAuthCredentials,
-                        timeout=1,
-                    )
-                if response:
-                    return json.loads(response.text)
-            except (NewConnectionError, ConnectTimeoutError, MaxRetryError) as err:
-                print("Failed to send data to LaMetric device: ", err)
-            except requests.exceptions.RequestException as err:
-                print("Oops: Something Else: ", err)
-            except requests.exceptions.HTTPError as errh:
-                print("Http Error: ", errh)
-            except requests.exceptions.ConnectionError as errc:
-                print("Error Connecting: ", errc)
-            except requests.exceptions.Timeout as errt:
-                print("Timeout: ", errt)
-        else:
             self.open_settings_dialog()
-
 
     @pyqtSlot()
     def on_settingsButton_clicked(self):
@@ -696,29 +664,39 @@ class MainWindow(Window):
         """
         What to do when the test button is clicked
         """
+        queue = call_lametric_api("queue")
 
-        notification_obj = Notification('info', 'none', Model(2, [Frame('green_tick', 'Success')]))
-        if self.send_notification(notification_obj):
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
-            msg.setWindowTitle("Test Send Results")
-            msg.setText("Successfully sent the test notification to your LaMetric Time clock.\n\nYou're ready to go!")
-            msg.exec_()
-        else:
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Information)
-            msg.setWindowTitle("Test Send Results")
-            msg.setText("Failed to send the test notification to your LaMetric Time clock. \n\nPlease check the Settings window and ensure that you have the correct IP address and API key.")
-            msg.exec_()
+        notification_obj = Notification('info', 'none', Model(2, [Frame(Icons.green_tick, 'Success')]))
+        data = notification_obj.to_dict()
+        res = call_lametric_api("send", data=data)
+        if res:
+            if "success" in res:        
+                msg = QMessageBox()
+                msg.setIconPixmap(QPixmap("ui/green_tick.png"))
+                msg.setWindowTitle("Test Send Results")
+                msg.setText("Successfully sent the test notification to your LaMetric Time clock.\n\nYou're ready to go!")
+                msg.exec_()
+                return True
+
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        msg.setWindowTitle("Test Send Results")
+        msg.setText("Failed to send the test notification to your LaMetric Time clock. \n\nPlease check the Settings window and ensure that you have the correct IP address and API key.")
+        msg.exec_()
 
     def closeEvent(self, e):
         """
         When the application is closed, these tasks will be completed
         """
         super().closeEvent(e)
-        self.ir.shutdown()
-        self.timerConnectionMonitor.stop()
-        self.timerMainCycle.stop()
+        try:
+            self.connection_thread.quit()
+        except:
+            pass
+        try:
+            self.main_thread.quit()
+        except:
+            pass
         e.accept()
         QCoreApplication.exit()
 
