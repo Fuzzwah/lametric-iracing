@@ -12,15 +12,15 @@ import requests
 from urllib3 import disable_warnings
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
 from dataclasses_json import dataclass_json
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QApplication, QMessageBox
-from PyQt5.QtCore import (
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtCore import (
     QCoreApplication,
     QObject,
     QThread,
     QSettings,
-    pyqtSlot,
-    pyqtSignal
+    Slot,
+    Signal
 )
 from window import Window, Dialog
 from pyirsdk import (
@@ -242,7 +242,7 @@ class ConnectToIRacing(QObject):
     The worker that monitors if the app is connected to iRacing
     """
 
-    connected_to_iracing = pyqtSignal()
+    connected_to_iracing = Signal()
 
     def __init__(self):
         super(ConnectToIRacing, self).__init__()
@@ -266,12 +266,12 @@ class MainCycle(QObject):
     Sends notifications to LaMetric device
     """
 
-    disconnected_from_iracing = pyqtSignal()
-    irating_update = pyqtSignal(str)
-    license_update = pyqtSignal(str)
-    laps_update = pyqtSignal(str)
-    best_laptime_update = pyqtSignal(str)
-    position_update = pyqtSignal(str)
+    disconnected_from_iracing = Signal()
+    irating_update = Signal(str)
+    license_update = Signal(str)
+    laps_update = Signal(str)
+    best_laptime_update = Signal(str)
+    position_update = Signal(str)
 
     def __init__(self, enable_irating, enable_license, enable_flags, enable_laps, enable_bestlap, enable_position):
         super(MainCycle, self).__init__()
@@ -603,6 +603,7 @@ class MainWindow(Window):
         self.main_thread.started.connect(self.main_worker.run)
         self.main_worker.disconnected_from_iracing.connect(self.main_thread.quit)
         self.main_worker.disconnected_from_iracing.connect(self.disconnected_from_iracing)
+        self.main_worker.disconnected_from_iracing.connect(self.connection_thread.start)
         self.main_worker.irating_update.connect(self.update_irating)
         self.main_worker.license_update.connect(self.update_license)
         self.main_worker.laps_update.connect(self.update_laps)
@@ -649,7 +650,7 @@ class MainWindow(Window):
             msg.exec_()
             self.open_settings_dialog()
 
-    @pyqtSlot()
+    @Slot()
     def on_settingsButton_clicked(self):
         self.open_settings_dialog()
 
@@ -659,7 +660,7 @@ class MainWindow(Window):
 
         self.settings_dialog.show()
 
-    @pyqtSlot()
+    @Slot()
     def on_testButton_clicked(self):
         """
         What to do when the test button is clicked
