@@ -267,6 +267,9 @@ class MainWorker(QThread):
 
         self.ir = IRSDK()
         self.state = State()
+        self.sent_data = Data()
+        self.data = Data()
+        self.driver = Driver()
 
         self.signals = MainWorkerSignals()
         self.options = Options()
