@@ -1,4 +1,4 @@
-pyside6
+pyqt5
 requests
 pyyaml
 dataclasses-json

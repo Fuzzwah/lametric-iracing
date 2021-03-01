@@ -12,15 +12,15 @@ import requests
 from urllib3 import disable_warnings
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
 from dataclasses_json import dataclass_json
-from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QApplication, QMessageBox
-from PySide6.QtCore import (
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QApplication, QMessageBox
+from PyQt5.QtCore import (
     QCoreApplication,
     QObject,
     QThread,
     QSettings,
-    Slot,
-    Signal
+    pyqtSlot,
+    pyqtSignal
 )
 from window import Window, Dialog
 from pyirsdk import (
@@ -252,13 +252,13 @@ class Options(object):
 
 
 class MainWorkerSignals(QObject):
-    connected_to_iracing = Signal()
-    disconnected_from_iracing = Signal()
-    irating_update = Signal(str)
-    license_update = Signal(str)
-    laps_update = Signal(str)
-    best_laptime_update = Signal(str)
-    position_update = Signal(str)
+    connected_to_iracing = pyqtSignal()
+    disconnected_from_iracing = pyqtSignal()
+    irating_update = pyqtSignal(str)
+    license_update = pyqtSignal(str)
+    laps_update = pyqtSignal(str)
+    best_laptime_update = pyqtSignal(str)
+    position_update = pyqtSignal(str)
 
 
 class MainWorker(QThread):
@@ -634,7 +634,7 @@ class MainWindow(Window):
             msg.exec_()
             self.open_settings_dialog()
 
-    @Slot()
+    @pyqtSlot()
     def on_settingsButton_clicked(self):
         self.open_settings_dialog()
 
@@ -644,7 +644,7 @@ class MainWindow(Window):
 
         self.settings_dialog.show()
 
-    @Slot()
+    @pyqtSlot()
     def on_testButton_clicked(self):
         """
         What to do when the test button is clicked
