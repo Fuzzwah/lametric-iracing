@@ -237,35 +237,22 @@ class State(object):
     ratings_sent: bool = False
 
 
-class ConnectToIRacing(QObject):
+@dataclass
+class Options(object):
     """
-    The worker that monitors if the app is connected to iRacing
+    a dataclass object to pass around the current options selected in the UI
     """
 
+    enable_irating: bool = True
+    enable_license: bool = True
+    enable_flags: bool = True
+    enable_laps: bool = True
+    enable_bestlap: bool = True
+    enable_position: bool = True
+
+
+class MainWorkerSignals(QObject):
     connected_to_iracing = Signal()
-
-    def __init__(self):
-        super(ConnectToIRacing, self).__init__()
-
-        self.ir = IRSDK()
-                
-    def run(self):
-        while not self.ir.is_initialized and not self.ir.is_connected:
-            self.ir.startup(silent=True)
-            if not self.ir.is_initialized and not self.ir.is_connected:
-                sleep(5)
-        else:
-            self.ir.shutdown()
-            self.connected_to_iracing.emit()
-
-
-class MainCycle(QObject):
-    """
-    The worker that gets the data from iRacing and processes it
-    Updates GUI via signals
-    Sends notifications to LaMetric device
-    """
-
     disconnected_from_iracing = Signal()
     irating_update = Signal(str)
     license_update = Signal(str)
@@ -273,51 +260,53 @@ class MainCycle(QObject):
     best_laptime_update = Signal(str)
     position_update = Signal(str)
 
-    def __init__(self, enable_irating, enable_license, enable_flags, enable_laps, enable_bestlap, enable_position):
-        super(MainCycle, self).__init__()
+
+class MainWorker(QThread):
+    def __init__(self, parent=None):
+        QThread.__init__(self, parent)
 
         self.ir = IRSDK()
         self.state = State()
-        self.sent_data = Data()
-        self.data = Data()
-        self.driver = Driver()
 
-        self.enable_irating = enable_irating
-        self.enable_license = enable_license
-        self.enable_flags = enable_flags
-        self.enable_laps = enable_laps
-        self.enable_bestlap = enable_bestlap
-        self.enable_position = enable_position
+        self.signals = MainWorkerSignals()
+        self.options = Options()
+
+        self.signals.connected_to_iracing.connect(parent.connected_to_iracing)
+        self.signals.disconnected_from_iracing.connect(parent.disconnected_from_iracing)
+        self.signals.irating_update.connect(parent.update_irating)
+        self.signals.license_update.connect(parent.update_license)
+        self.signals.laps_update.connect(parent.update_laps)
+        self.signals.best_laptime_update.connect(parent.update_best_laptime)
+        self.signals.position_update.connect(parent.update_position)
+
+        self._active = False
+
+
+    def deactivate(self):
+        self._active = False
 
     def run(self):
-        self.ir.startup(silent=True)
-        for dvr in self.ir['DriverInfo']['Drivers']:
-            if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
-                self.driver.caridx = dvr['CarIdx']
-                self.driver.name = dvr['UserName']
-                self.driver.irating = int(dvr['IRating'])
-                self.driver.license_string = dvr['LicString']
-                license_letter, safety_rating = dvr['LicString'].split(' ')
-                self.driver.license_letter = license_letter
-                self.driver.safety_rating = float(safety_rating)
-                break
+        self._active = True
+        # Do something on the worker thread
+        while self._active:
+            if self.ir.is_initialized and self.ir.is_connected:
+                if not self.state.ir_connected:
+                    self.dismiss_notifications()
+                    self.send_ratings()
+                    self.signals.connected_to_iracing.emit()
+                    self.state.ir_connected = True
 
-        self.irating_update.emit(f"{self.driver.irating:,}")
-        self.license_update.emit(self.driver.license_string)
+                self.data_collection()
+                self.process_data()
 
-        self.dismiss_notifications()
-        self.send_ratings()
-        sleep(2)
-
-        while self.ir.is_initialized and self.ir.is_connected:
-            self.data_collection()
-            self.process_data()
-            sleep(0.5)
-            if not self.ir.is_initialized and not self.ir.is_connected:
-                break
-        else:
-            self.ir.shutdown()
-            self.disconnected_from_iracing.emit()
+            else:
+                if self.state.ir_connected:
+                    self.signals.disconnected_from_iracing.emit()
+                    self.state.ir_connected = False
+                self.ir.startup(silent=True)
+                for i in range(50):
+                    if self._active:
+                        sleep(0.1)
 
     def update_data(self, attr, value):
         """
@@ -365,7 +354,7 @@ class MainCycle(QObject):
         frames = []
         flag = False
 
-        if self.enable_flags:
+        if self.options.enable_flags:
 
             if self.data.flags & Flags.start_hidden and not self.state.start_hidden_shown:
                 self.state.start_hidden_shown = True
@@ -453,24 +442,24 @@ class MainCycle(QObject):
 
         if self.data.best_laptime:
             if not flag and self.sent_data.best_laptime != self.data.best_laptime:
-                self.best_laptime_update.emit(self.data.best_laptime)
-                if self.enable_bestlap:
+                self.signals.best_laptime_update.emit(self.data.best_laptime)
+                if self.options.enable_bestlap:
                     frames.append(Frame(Icons.purple, self.data.best_laptime))
         
         if self.data.position:
             if not flag and self.sent_data.position != self.data.position:
-                self.position_update.emit(f"{self.data.position}")
+                self.signals.position_update.emit(f"{self.data.position}")
                 icon = Icons.gain_position
                 if self.sent_data.position:
                     if self.sent_data.position < self.data.position:
                         icon = Icons.lose_position
-                if self.enable_position:
+                if self.options.enable_position:
                     frames.append(Frame(icon, f"{self.data.position}"))
 
         if self.data.laps:
             if not flag and self.sent_data.laps != self.data.laps:
-                self.laps_update.emit(f"{self.data.laps}")
-                if self.enable_laps:
+                self.signals.laps_update.emit(f"{self.data.laps}")
+                if self.options.enable_laps:
                     frames.append(Frame(Icons.laps, f"{self.data.laps}"))
 
         if len(frames) > 0:
@@ -491,12 +480,12 @@ class MainCycle(QObject):
         """
         frames = []
 
-        self.irating_update.emit(f"{self.driver.irating:,}")
-        if self.enable_irating:
+        self.signals.irating_update.emit(f"{self.driver.irating:,}")
+        if self.options.enable_irating:
             frames.append(Frame(Icons.ir, f"{self.driver.irating:,}"))
 
-        self.license_update.emit(f"{self.driver.safety_rating}")
-        if self.enable_license:
+        self.signals.license_update.emit(f"{self.driver.safety_rating}")
+        if self.options.enable_license:
             icon = Icons.ir
             if self.driver.license_letter == 'R':
                 icon = Icons.license_letter_r
@@ -570,46 +559,32 @@ class MainWindow(Window):
         self.setStatusBar(sb)
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
 
-        self.register_widget(self.checkBox_IRating, default=True)
-        self.register_widget(self.checkBox_License, default=True)
-        self.register_widget(self.checkBox_Position, default=True)
-        self.register_widget(self.checkBox_Laps, default=True)
-        self.register_widget(self.checkBox_BestLap, default=True)
-        self.register_widget(self.checkBox_Flags, default=True)
+        self.register_widget(self.checkBox_IRating, default=True, changefunc=self.toggled_irating)
+        self.register_widget(self.checkBox_License, default=True, changefunc=self.toggled_license)
+        self.register_widget(self.checkBox_Position, default=True, changefunc=self.toggled_position)
+        self.register_widget(self.checkBox_Laps, default=True, changefunc=self.toggled_laps)
+        self.register_widget(self.checkBox_BestLap, default=True, changefunc=self.toggled_bestlap)
+        self.register_widget(self.checkBox_Flags, default=True, changefunc=self.toggled_flags)
 
-        self.connection_thread = QThread()
-        self.connection_worker = ConnectToIRacing()
-        self.connection_worker.moveToThread(self.connection_thread)
-        self.connection_thread.started.connect(self.connection_worker.run)
-        self.connection_worker.connected_to_iracing.connect(self.connection_thread.quit)
-        self.connection_worker.connected_to_iracing.connect(self.connected_to_iracing)
-        self.connection_thread.start()
+        self.main_worker = MainWorker(self)
 
-    def connected_to_iracing(self):
-           
-        self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
-        self.statusBar().showMessage(('STATUS: iRacing client detected.'))
+    def toggled_irating(self, new_state):
+        self.main_worker.options.enable_irating = new_state
 
-        enable_irating = self.checkBox_IRating.isChecked()
-        enable_license = self.checkBox_License.isChecked()
-        enable_flags = self.checkBox_Flags.isChecked()
-        enable_laps = self.checkBox_Laps.isChecked()
-        enable_bestlap = self.checkBox_BestLap.isChecked()
-        enable_position = self.checkBox_Position.isChecked()
+    def toggled_license(self, new_state):
+        self.main_worker.options.enable_license = new_state
 
-        self.main_thread = QThread()
-        self.main_worker = MainCycle(enable_irating, enable_license, enable_flags, enable_laps, enable_bestlap, enable_position)
-        self.main_worker.moveToThread(self.main_thread)
-        self.main_thread.started.connect(self.main_worker.run)
-        self.main_worker.disconnected_from_iracing.connect(self.main_thread.quit)
-        self.main_worker.disconnected_from_iracing.connect(self.disconnected_from_iracing)
-        self.main_worker.disconnected_from_iracing.connect(self.connection_thread.start)
-        self.main_worker.irating_update.connect(self.update_irating)
-        self.main_worker.license_update.connect(self.update_license)
-        self.main_worker.laps_update.connect(self.update_laps)
-        self.main_worker.best_laptime_update.connect(self.update_best_laptime)
-        self.main_worker.position_update.connect(self.update_position)
-        self.main_thread.start()
+    def toggled_flags(self, new_state):
+        self.main_worker.options.enable_flags = new_state
+
+    def toggled_laps(self, new_state):
+        self.main_worker.options.enable_laps = new_state
+
+    def toggled_bestlap(self, new_state):
+        self.main_worker.options.enable_bestlap = new_state
+
+    def toggled_position(self, new_state):
+        self.main_worker.options.enable_position = new_state
 
     def update_irating(self, irating_str):
         self.lineEdit_IRating.setText(irating_str)
@@ -625,6 +600,11 @@ class MainWindow(Window):
 
     def update_position(self, position_str):
         self.lineEdit_Position.setText(position_str)
+
+    def connected_to_iracing(self):
+           
+        self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
+        self.statusBar().showMessage(('STATUS: iRacing client detected.'))
 
     def disconnected_from_iracing(self):
 
@@ -690,14 +670,8 @@ class MainWindow(Window):
         When the application is closed, these tasks will be completed
         """
         super().closeEvent(e)
-        try:
-            self.connection_thread.quit()
-        except:
-            pass
-        try:
-            self.main_thread.quit()
-        except:
-            pass
+        self.main_worker.deactivate()
+        self.main_worker.wait()
         e.accept()
         QCoreApplication.exit()
 
@@ -724,5 +698,6 @@ if __name__ == "__main__":
     root.resize(800, 300)
     root.show()
     root.check_settings()
+    root.main_worker.start()
     ret = qapp.exec_()
     sys.exit(ret)
