@@ -471,6 +471,7 @@ class MainWorker(QThread):
                 self.send_notification(notification_obj)
             copy_data(self.data, self.sent_data)
         else:
+            self.dismiss_notifications()
             self.send_ratings()
         sleep(0.2)
 
@@ -537,12 +538,15 @@ class MainWorker(QThread):
         data = notification_obj.to_dict()
         if data != self.state.previous_data_sent:
             res = call_lametric_api("send", data=data)
-            if "success" in res:
-                notification_id = res['success']['id']
-                self.dismiss_notifications(excluding=notification_id)
-                self.state.previous_data_sent = data
-            return True
-
+            try:
+                if "success" in res:
+                    notification_id = res['success']['id']
+                    self.dismiss_notifications(excluding=notification_id)
+                    self.state.previous_data_sent = data
+                return True
+            except TypeError:
+                # need a message that send failed
+                return False
 
 class MainWindow(Window):
     def __init__(self):
