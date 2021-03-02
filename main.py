@@ -219,6 +219,7 @@ class Icons(object):
     purple: str = '43599'
 
     laps: str = '43645'
+    position: str = '44149'
     gain_position: str = 'a43651'
     lose_position: str = 'a43652'
 
@@ -512,9 +513,23 @@ class MainWorker(QThread):
                 self.send_notification(notification_obj)
             copy_data(self.data, self.sent_data)
         else:
+            self.send_default_display()
+            self.dismiss_notifications()
+        sleep(0.2)
+
+    def send_default_display(self):
+        if self.options.default_display == "ratings":
             if not self.send_ratings():
                 self.dismiss_notifications()
-        sleep(0.2)
+        elif self.options.default_display == "position":
+            notification_obj = Notification('info', 'none', Model(0, Frame(Icons.position, f"{self.data.position}")))
+            self.send_notification(notification_obj)
+        elif self.options.default_display == "laps":
+            notification_obj = Notification('info', 'none', Model(0, Frame(Icons.laps, f"{self.data.laps}")))
+            self.send_notification(notification_obj)
+        elif self.options.default_display == "bestlaps":
+            notification_obj = Notification('info', 'none', Model(0, Frame(Icons.purple, f"{self.data.best_laptime}")))
+            self.send_notification(notification_obj)
 
     def send_ratings(self):
         """
@@ -544,7 +559,11 @@ class MainWorker(QThread):
             frames.append(Frame(icon, f"{self.driver.safety_rating}"))
 
         if len(frames) > 0:
-            notification_obj = Notification('info', 'none', Model(0, frames))
+            if self.options.default_display == "ratings":
+                cycles = 0
+            else:
+                cycles = 2
+            notification_obj = Notification('info', 'none', Model(cycles, frames))
             self.send_notification(notification_obj)
             return True
         else:
@@ -598,7 +617,7 @@ class MainWindow(Window):
         super().__init__("ui/MainWindow.ui")
 
         self.setFixedWidth(400)
-        self.setFixedHeight(280)
+        self.setFixedHeight(200)
 
         self.settings_dialog: Optional[SettingsDialog] = None
 
@@ -608,13 +627,18 @@ class MainWindow(Window):
         self.setStatusBar(sb)
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
 
-        cb: QComboBox = self.comboBox_DefaultDisplay
-        cb.addItem("Cycle iR/License", "ratings")
-        cb.addItem("Position", "position")
-        cb.addItem("Laps", "laps")
-        cb.addItem("Best Lap", "bestlap")
+        self.default_display_options = {
+            0: ("Cycle iR/License", 'ratings'),
+            1: ("Position", 'position'),
+            2: ("Laps", 'laps'),
+            3: ("Best Lap", 'bestlap'),
+        }
 
-        self.register_widget(self.comboBox_DefaultDisplay, default="ratings", changefunc=self.new_default_display)
+        cb: QComboBox = self.comboBox_DefaultDisplay
+        for full_option_name, option_short_name in self.default_display_options.values():
+            cb.addItem(full_option_name)
+
+        self.register_widget(self.comboBox_DefaultDisplay, default=0, changefunc=self.new_default_display)
         self.register_widget(self.checkBox_IRating, default=True, changefunc=self.toggled_irating)
         self.register_widget(self.checkBox_License, default=True, changefunc=self.toggled_license)
         self.register_widget(self.checkBox_Position, default=True, changefunc=self.toggled_position)
@@ -624,9 +648,10 @@ class MainWindow(Window):
 
         self.main_worker = MainWorker(self)
 
-    def new_default_display(self, selected):
-        print(selected)
-        self.main_worker.default_display(selected)
+    def new_default_display(self, option_index):
+        full_option_name, option_short_name = self.default_display_options[option_index]
+        print(full_option_name)
+        self.main_worker.default_display(option_short_name)
 
     def toggled_irating(self, new_state):
         self.main_worker.enable_irating(bool(new_state))
