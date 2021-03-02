@@ -284,6 +284,23 @@ class MainWorker(QThread):
 
         self._active = False
 
+    def enable_irating(self, state):
+        self.options.enable_irating = state
+
+    def enable_license(self, state):
+        self.options.enable_license = state
+
+    def enable_flags(self, state):
+        self.options.enable_flags = state
+
+    def enable_laps(self, state):
+        self.options.enable_laps = state
+
+    def enable_position(self, state):
+        self.options.enable_position = state
+
+    def enable_bestlap(self, state):
+        self.options.enable_bestlap = state
 
     def deactivate(self):
         self._active = False
@@ -588,22 +605,22 @@ class MainWindow(Window):
         self.main_worker = MainWorker(self)
 
     def toggled_irating(self, new_state):
-        self.main_worker.options.enable_irating = new_state
+        self.main_worker.enable_irating(new_state)
 
     def toggled_license(self, new_state):
-        self.main_worker.options.enable_license = new_state
+        self.main_worker.enable_license(new_state)
 
     def toggled_flags(self, new_state):
-        self.main_worker.options.enable_flags = new_state
+        self.main_worker.enable_flags(new_state)
 
     def toggled_laps(self, new_state):
-        self.main_worker.options.enable_laps = new_state
+        self.main_worker.enable_laps(new_state)
 
     def toggled_bestlap(self, new_state):
-        self.main_worker.options.enable_bestlap = new_state
+        self.main_worker.enable_bestlap(new_state)
 
     def toggled_position(self, new_state):
-        self.main_worker.options.enable_position = new_state
+        self.main_worker.enable_position(new_state)
 
     def update_irating(self, irating_str):
         self.lineEdit_IRating.setText(irating_str)
