@@ -13,7 +13,7 @@ from urllib3 import disable_warnings
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError, MaxRetryError
 from dataclasses_json import dataclass_json
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from PyQt5.QtWidgets import QApplication, QMessageBox, QComboBox
 from PyQt5.QtCore import (
     QCoreApplication,
     QObject,
@@ -246,6 +246,7 @@ class Options(object):
     enable_laps: bool = True
     enable_bestlap: bool = True
     enable_position: bool = True
+    default_display: str = "ratings"
 
 
 class MainWorkerSignals(QObject):
@@ -287,6 +288,9 @@ class MainWorker(QThread):
         self.signals.position_update.connect(parent.update_position)
 
         self._active = False
+
+    def default_display(self, selected):
+        self.options.default_display = selected
 
     def enable_irating(self, state):
         self.options.enable_irating = state
@@ -594,7 +598,7 @@ class MainWindow(Window):
         super().__init__("ui/MainWindow.ui")
 
         self.setFixedWidth(400)
-        self.setFixedHeight(140)
+        self.setFixedHeight(280)
 
         self.settings_dialog: Optional[SettingsDialog] = None
 
@@ -604,6 +608,13 @@ class MainWindow(Window):
         self.setStatusBar(sb)
         self.statusBar().showMessage('STATUS: Waiting for iRacing client...')
 
+        cb: QComboBox = self.comboBox_DefaultDisplay
+        cb.addItem("Cycle iR/License", "ratings")
+        cb.addItem("Position", "position")
+        cb.addItem("Laps", "laps")
+        cb.addItem("Best Lap", "bestlap")
+
+        self.register_widget(self.comboBox_DefaultDisplay, default="ratings", changefunc=self.new_default_display)
         self.register_widget(self.checkBox_IRating, default=True, changefunc=self.toggled_irating)
         self.register_widget(self.checkBox_License, default=True, changefunc=self.toggled_license)
         self.register_widget(self.checkBox_Position, default=True, changefunc=self.toggled_position)
@@ -612,6 +623,10 @@ class MainWindow(Window):
         self.register_widget(self.checkBox_Flags, default=True, changefunc=self.toggled_flags)
 
         self.main_worker = MainWorker(self)
+
+    def new_default_display(self, selected):
+        print(selected)
+        self.main_worker.default_display(selected)
 
     def toggled_irating(self, new_state):
         self.main_worker.enable_irating(bool(new_state))

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>217</height>
+    <height>290</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,6 +19,26 @@
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
        <layout class="QHBoxLayout" name="topBox">
+        <item>
+         <widget class="QLabel" name="label_DefaultDisplay">
+          <property name="text">
+           <string>Default Display</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+          <property name="margin">
+           <number>10</number>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="comboBox_DefaultDisplay"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="mainBox">
         <property name="leftMargin">
          <number>5</number>
         </property>
