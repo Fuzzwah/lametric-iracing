@@ -271,6 +271,13 @@ class MainWorker(QThread):
         self.signals = MainWorkerSignals()
         self.options = Options()
 
+        self.options.enable_irating = parent.checkBox_IRating.isChecked()
+        self.options.enable_license = parent.checkBox_License.isChecked()
+        self.options.enable_flags = parent.checkBox_Flags.isChecked()
+        self.options.enable_laps = parent.checkBox_Laps.isChecked()
+        self.options.enable_bestlap = parent.checkBox_BestLap.isChecked()
+        self.options.enable_position = parent.checkBox_Position.isChecked()        
+
         self.signals.connected_to_iracing.connect(parent.connected_to_iracing)
         self.signals.disconnected_from_iracing.connect(parent.disconnected_from_iracing)
         self.signals.irating_update.connect(parent.update_irating)
@@ -502,7 +509,7 @@ class MainWorker(QThread):
             copy_data(self.data, self.sent_data)
         else:
             if not self.send_ratings():
-                self.dismiss_notification()
+                self.dismiss_notifications()
         sleep(0.2)
 
     def send_ratings(self):
