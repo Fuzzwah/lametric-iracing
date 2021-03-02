@@ -291,6 +291,10 @@ class SaveWindow(QWidget):
                 except Exception as e:
                     print(e)
 
+                # Optionally connect event handler
+                if widget.__func:
+                    if isinstance(signal, pyqtBoundSignal):
+                        signal.connect(widget.__func)
             else:
                 print("SaveWindow.register_widget(" + str(wtype) + ") not implemented.")
 
