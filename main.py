@@ -503,7 +503,6 @@ class MainWorker(QThread):
                 self.send_notification(notification_obj)
             copy_data(self.data, self.sent_data)
         else:
-            self.dismiss_notifications()
             self.send_ratings()
         sleep(0.2)
 
@@ -568,9 +567,7 @@ class MainWorker(QThread):
         """
  
         data = notification_obj.to_dict()
-        print("call to send")
         if data != self.state.previous_data_sent:
-            pprint(f"sending: {data}")
             res = call_lametric_api("send", data=data)
             try:
                 if "success" in res:
