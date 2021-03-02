@@ -514,7 +514,6 @@ class MainWorker(QThread):
             copy_data(self.data, self.sent_data)
         else:
             self.send_default_display()
-            self.dismiss_notifications()
         sleep(0.2)
 
     def send_default_display(self):
