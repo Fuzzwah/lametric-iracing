@@ -288,16 +288,28 @@ class MainWorker(QThread):
     def deactivate(self):
         self._active = False
 
+    def connected(self):
+        for dvr in self.ir['DriverInfo']['Drivers']:
+            if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
+                self.driver.caridx = dvr['CarIdx']
+                self.driver.name = dvr['UserName']
+                self.driver.irating = int(dvr['IRating'])
+                self.driver.license_string = dvr['LicString']
+                license_letter, safety_rating = dvr['LicString'].split(' ')
+                self.driver.license_letter = license_letter
+                self.driver.safety_rating = float(safety_rating)        
+        self.dismiss_notifications()
+        self.send_ratings()
+        self.signals.connected_to_iracing.emit()
+        self.state.ir_connected = True
+
     def run(self):
         self._active = True
         # Do something on the worker thread
         while self._active:
             if self.ir.is_initialized and self.ir.is_connected:
                 if not self.state.ir_connected:
-                    self.dismiss_notifications()
-                    self.send_ratings()
-                    self.signals.connected_to_iracing.emit()
-                    self.state.ir_connected = True
+                    self.connected()
 
                 self.data_collection()
                 self.process_data()
