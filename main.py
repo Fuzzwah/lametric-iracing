@@ -285,12 +285,14 @@ class MainWorker(QThread):
         self._active = False
 
     def enable_irating(self, state):
+        print(f"irating: {state}")
         self.options.enable_irating = state
 
     def enable_license(self, state):
         self.options.enable_license = state
 
     def enable_flags(self, state):
+        print(f"flags: {state}")
         self.options.enable_flags = state
 
     def enable_laps(self, state):
@@ -329,6 +331,7 @@ class MainWorker(QThread):
                     self.connected()
 
                 self.data_collection()
+                print(f"flags: {self.options.enable_flags}")
                 self.process_data()
 
             else:
