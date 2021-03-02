@@ -230,11 +230,8 @@ class State(object):
     """
 
     ir_connected: bool = False
-    car_in_world: bool = False
-    last_car_setup_tick: int = -1
     previous_data_sent: Dict = None
     start_hidden_shown: bool = False
-    ratings_sent: bool = False
 
 
 @dataclass
@@ -285,14 +282,12 @@ class MainWorker(QThread):
         self._active = False
 
     def enable_irating(self, state):
-        print(f"irating: {state}")
         self.options.enable_irating = state
 
     def enable_license(self, state):
         self.options.enable_license = state
 
     def enable_flags(self, state):
-        print(f"flags: {state}")
         self.options.enable_flags = state
 
     def enable_laps(self, state):
@@ -321,6 +316,7 @@ class MainWorker(QThread):
         self.send_ratings()
         self.signals.connected_to_iracing.emit()
         self.state.ir_connected = True
+        self.state.start_hidden_shown = False
 
     def run(self):
         self._active = True
@@ -331,7 +327,6 @@ class MainWorker(QThread):
                     self.connected()
 
                 self.data_collection()
-                print(f"flags: {self.options.enable_flags}")
                 self.process_data()
 
             else:
@@ -506,7 +501,8 @@ class MainWorker(QThread):
                 self.send_notification(notification_obj)
             copy_data(self.data, self.sent_data)
         else:
-            self.send_ratings()
+            if not self.send_ratings():
+                self.dismiss_notification()
         sleep(0.2)
 
     def send_ratings(self):
@@ -536,8 +532,12 @@ class MainWorker(QThread):
                 icon = Icons.license_letter_p
             frames.append(Frame(icon, f"{self.driver.safety_rating}"))
 
+        if len(frames) > 0:
             notification_obj = Notification('info', 'none', Model(0, frames))
             self.send_notification(notification_obj)
+            return True
+        else:
+            return False
 
     def dismiss_notifications(self, excluding=None):
         """
@@ -607,22 +607,22 @@ class MainWindow(Window):
         self.main_worker = MainWorker(self)
 
     def toggled_irating(self, new_state):
-        self.main_worker.enable_irating(new_state)
+        self.main_worker.enable_irating(bool(new_state))
 
     def toggled_license(self, new_state):
-        self.main_worker.enable_license(new_state)
+        self.main_worker.enable_license(bool(new_state))
 
     def toggled_flags(self, new_state):
-        self.main_worker.enable_flags(new_state)
+        self.main_worker.enable_flags(bool(new_state))
 
     def toggled_laps(self, new_state):
-        self.main_worker.enable_laps(new_state)
+        self.main_worker.enable_laps(bool(new_state))
 
     def toggled_bestlap(self, new_state):
-        self.main_worker.enable_bestlap(new_state)
+        self.main_worker.enable_bestlap(bool(new_state))
 
     def toggled_position(self, new_state):
-        self.main_worker.enable_position(new_state)
+        self.main_worker.enable_position(bool(new_state))
 
     def update_irating(self, irating_str):
         self.lineEdit_IRating.setText(irating_str)
