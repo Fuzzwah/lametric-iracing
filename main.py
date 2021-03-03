@@ -273,13 +273,6 @@ class MainWorker(QThread):
         self.signals = MainWorkerSignals()
         self.options = Options()
 
-        self.options.enable_irating = parent.checkBox_IRating.isChecked()
-        self.options.enable_license = parent.checkBox_License.isChecked()
-        self.options.enable_flags = parent.checkBox_Flags.isChecked()
-        self.options.enable_laps = parent.checkBox_Laps.isChecked()
-        self.options.enable_bestlap = parent.checkBox_BestLap.isChecked()
-        self.options.enable_position = parent.checkBox_Position.isChecked()        
-
         self.signals.connected_to_iracing.connect(parent.connected_to_iracing)
         self.signals.disconnected_from_iracing.connect(parent.disconnected_from_iracing)
         self.signals.irating_update.connect(parent.update_irating)
@@ -521,13 +514,13 @@ class MainWorker(QThread):
             if not self.send_ratings():
                 self.dismiss_notifications()
         elif self.options.default_display == "position":
-            notification_obj = Notification('info', 'none', Model(0, Frame(Icons.position, f"{self.data.position}")))
+            notification_obj = Notification('info', 'none', Model(0, [Frame(Icons.position, f"{self.data.position}")]))
             self.send_notification(notification_obj)
         elif self.options.default_display == "laps":
-            notification_obj = Notification('info', 'none', Model(0, Frame(Icons.laps, f"{self.data.laps}")))
+            notification_obj = Notification('info', 'none', Model(0, [Frame(Icons.laps, f"{self.data.laps}")]))
             self.send_notification(notification_obj)
         elif self.options.default_display == "bestlaps":
-            notification_obj = Notification('info', 'none', Model(0, Frame(Icons.purple, f"{self.data.best_laptime}")))
+            notification_obj = Notification('info', 'none', Model(0, [Frame(Icons.purple, f"{self.data.best_laptime}")]))
             self.send_notification(notification_obj)
 
     def send_ratings(self):
@@ -616,7 +609,7 @@ class MainWindow(Window):
         super().__init__("ui/MainWindow.ui")
 
         self.setFixedWidth(400)
-        self.setFixedHeight(200)
+        self.setFixedHeight(190)
 
         self.settings_dialog: Optional[SettingsDialog] = None
 
@@ -637,7 +630,7 @@ class MainWindow(Window):
         for full_option_name, option_short_name in self.default_display_options.values():
             cb.addItem(full_option_name)
 
-        self.register_widget(self.comboBox_DefaultDisplay, default=0, changefunc=self.new_default_display)
+        self.register_widget(self.comboBox_DefaultDisplay, default="Cycle iR/License", changefunc=self.new_default_display)
         self.register_widget(self.checkBox_IRating, default=True, changefunc=self.toggled_irating)
         self.register_widget(self.checkBox_License, default=True, changefunc=self.toggled_license)
         self.register_widget(self.checkBox_Position, default=True, changefunc=self.toggled_position)
@@ -649,7 +642,6 @@ class MainWindow(Window):
 
     def new_default_display(self, option_index):
         full_option_name, option_short_name = self.default_display_options[option_index]
-        print(full_option_name)
         self.main_worker.default_display(option_short_name)
 
     def toggled_irating(self, new_state):
@@ -686,7 +678,15 @@ class MainWindow(Window):
         self.lineEdit_Position.setText(position_str)
 
     def connected_to_iracing(self):
-           
+
+        self.toggled_irating(self.checkBox_IRating.isChecked())
+        self.toggled_license(self.checkBox_License.isChecked())
+        self.toggled_flags(self.checkBox_Flags.isChecked())
+        self.toggled_laps(self.checkBox_Laps.isChecked())
+        self.toggled_bestlap(self.checkBox_BestLap.isChecked())
+        self.toggled_position(self.checkBox_Position.isChecked())
+        self.new_default_display(self.comboBox_DefaultDisplay.currentIndex())
+
         self.statusBar().setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(0,150,0,200);color:white;font-weight:bold;}")
         self.statusBar().showMessage(('STATUS: iRacing client detected.'))
 
