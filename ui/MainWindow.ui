@@ -275,6 +275,12 @@
       </item>
       <item>
        <layout class="QHBoxLayout" name="bottomBox">
+        <property name="leftMargin">
+         <number>10</number>
+        </property>
+        <property name="rightMargin">
+         <number>10</number>
+        </property>
         <item>
          <widget class="QPushButton" name="settingsButton">
           <property name="text">
