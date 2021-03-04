@@ -19,6 +19,9 @@
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
        <layout class="QHBoxLayout" name="topBox">
+        <property name="rightMargin">
+         <number>10</number>
+        </property>
         <item>
          <widget class="QLabel" name="label_DefaultDisplay">
           <property name="text">
@@ -33,7 +36,28 @@
          </widget>
         </item>
         <item>
-         <widget class="QComboBox" name="comboBox_DefaultDisplay"/>
+         <widget class="QComboBox" name="comboBox_DefaultDisplay">
+          <item>
+           <property name="text">
+            <string>Cycle iR/License</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Position</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Laps</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Best Lap</string>
+           </property>
+          </item>
+         </widget>
         </item>
        </layout>
       </item>

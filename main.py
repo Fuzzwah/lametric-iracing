@@ -626,10 +626,6 @@ class MainWindow(Window):
             3: ("Best Lap", 'bestlap'),
         }
 
-        cb: QComboBox = self.comboBox_DefaultDisplay
-        for full_option_name, option_short_name in self.default_display_options.values():
-            cb.addItem(full_option_name)
-
         self.register_widget(self.comboBox_DefaultDisplay, default="Cycle iR/License", changefunc=self.new_default_display)
         self.register_widget(self.checkBox_IRating, default=True, changefunc=self.toggled_irating)
         self.register_widget(self.checkBox_License, default=True, changefunc=self.toggled_license)

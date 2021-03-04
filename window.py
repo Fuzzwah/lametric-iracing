@@ -91,11 +91,11 @@ def chb(widget: QCheckBox):
 # QComboBox
 def cb(widget: QComboBox):
     def set_value(value):
-        index = widget.findData(value, flags=Qt.MatchExactly)  # "Excatly" matches also int vs. str. Good!
+        index = widget.findText(value, flags=Qt.MatchFixedString)
         widget.setCurrentIndex(index)  # Not found: -1
 
     def get_value():
-        return widget.currentData()
+        return widget.currentText()
 
     def get_value_str() -> str:
         return str(get_value())
