@@ -679,8 +679,6 @@ class MainWindow(Window):
         self.register_widget(self.checkBox_BestLap, default=True, changefunc=self.toggled_bestlap)
         self.register_widget(self.checkBox_Flags, default=True, changefunc=self.toggled_flags)
 
-        print(self.comboBox_DefaultDisplay.currentIndex())
-
         self.main_worker = MainWorker(self)
 
     def new_default_display(self, option_index):
