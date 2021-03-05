@@ -23,7 +23,7 @@ from PyQt5.QtCore import (
     pyqtSignal
 )
 from window import Window, Dialog
-from pyIRSDK import (
+from pyirsdk import (
     IRSDK,
     Flags
 )
