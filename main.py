@@ -360,7 +360,9 @@ class MainWorker(QThread):
         self.ir.freeze_var_buffer_latest()
         
         if int(self.ir['PlayerCarClassPosition']) > 0:
-            self.update_data('position', f"{int(self.ir['PlayerCarClassPosition'])} / {int(len(self.ir['CarIdxClassPosition']))}")
+            self.update_data('position', f"{int(self.ir['PlayerCarClassPosition'])} / {int(len(self.ir['DriverInfo']['Drivers']))}")
+        else:
+            self.update_data('position', f"{int(len(self.ir['DriverInfo']['Drivers']))} / {int(len(self.ir['DriverInfo']['Drivers']))}")
         
         if float(self.ir['LapBestLapTime']) > 0:
             minutes, seconds = divmod(float(self.ir['LapBestLapTime']), 60)
@@ -469,7 +471,7 @@ class MainWorker(QThread):
 
             if self.data.flags & Flags.furled:
                 flag = True
-                frames.append(Frame(Icons.furled, "Warning"))
+                frames.append(Frame(Icons.furled, "Warn"))
 
             if self.data.flags & Flags.repair:
                 flag = True
@@ -612,6 +614,9 @@ class MainWindow(Window):
         self.setFixedHeight(190)
 
         self.settings_dialog: Optional[SettingsDialog] = None
+        
+        #s = QSettings()
+        #s.clear()
 
         sb = self.statusBar()
         sb.setStyleSheet("QStatusBar{padding-left:8px;padding-bottom:2px;background:rgba(150,0,0,200);color:white;font-weight:bold;}")
@@ -633,8 +638,6 @@ class MainWindow(Window):
         self.register_widget(self.checkBox_Laps, default=True, changefunc=self.toggled_laps)
         self.register_widget(self.checkBox_BestLap, default=True, changefunc=self.toggled_bestlap)
         self.register_widget(self.checkBox_Flags, default=True, changefunc=self.toggled_flags)
-
-        print(self.comboBox_DefaultDisplay.currentIndex())
 
         self.main_worker = MainWorker(self)
 

@@ -286,7 +286,6 @@ class SaveWindow(QWidget):
                 try:
                     name = widget.objectName()
                     defaultvalue = widget.__default_value
-                    print([name, defaultvalue])
                     widget.set_value_(s.value(name, defaultvalue))
 
                 except Exception as e:
