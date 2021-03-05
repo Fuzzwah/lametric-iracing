@@ -3,7 +3,7 @@
 
 import sys
 from pprint import pprint
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, asdict
 from time import sleep
 import json
 from typing import Optional, List, Dict
@@ -23,7 +23,7 @@ from PyQt5.QtCore import (
     pyqtSignal
 )
 from window import Window, Dialog
-from pyirsdk import (
+from pyIRSDK import (
     IRSDK,
     Flags
 )
@@ -156,7 +156,7 @@ class Driver(object):
 @dataclass
 class Data(object):
     """
-    a dataclass object to collect up the data we need from the irsdk
+    a dataclass object to collect up the data we need from the IRSDK
     """
 
     position: int = None
@@ -174,6 +174,14 @@ class Data(object):
 
 
 @dataclass
+class SessionTypes(object):
+    practice: str = "Practice"
+    qualify: str = "Qualify"
+    lonequalify: str = "Lone Qualify"
+    race: str = "Race"
+
+
+@dataclass(frozen=True)
 class Icons(object):
     """
     a dataclass object to pass around information regarding the icons
@@ -224,6 +232,24 @@ class Icons(object):
     lose_position: str = 'a43652'
 
 
+@dataclass()
+class Car(object):
+    CarIdx: int = None
+    CarClassID: int = None
+    CarNumber: int = None
+    ClassPosition: int = None
+    UserID: int = None
+    DriverName: str = None
+    GapAhead: float = None
+    GapBehind: float = None
+    GapSortedBy: float = None
+    LiveLaps: float = None
+    LivePosition: int = None
+    TeamName: str = None
+    WeightBase: float = 1
+    WeightCurrent: float = 1
+
+
 @dataclass
 class State(object):
     """
@@ -269,6 +295,7 @@ class MainWorker(QThread):
         self.sent_data = Data()
         self.data = Data()
         self.driver = Driver()
+        self.cars = {}
 
         self.signals = MainWorkerSignals()
         self.options = Options()
@@ -282,6 +309,132 @@ class MainWorker(QThread):
         self.signals.position_update.connect(parent.update_position)
 
         self._active = False
+
+    def get_sessiontype(self):
+        """
+        What type of session is this?
+        """
+        session_type = self.ir['SessionInfo']['Sessions'][self.ir['SessionNum']]['SessionType']
+        return session_type
+
+    def get_sessionstate(self):
+        """
+        What session state is this?
+        """
+        session_state = self.ir['SessionState']
+        return session_state
+
+    def is_practice_session(self):
+        """
+        Is this session Practice?
+        """
+        session_type = self.get_sessiontype()
+        if session_type == SessionTypes.practice:
+            return True
+        else:
+            return False
+
+    def is_qualify_session(self):
+        """
+        Is this session Racing?
+        """
+        session_type = self.get_sessiontype()
+        if session_type == SessionTypes.qualify or session_type == SessionTypes.lonequalify:
+            return True
+        else:
+            return False
+
+    def is_race_session(self):
+        """
+        Is this session Racing?
+        """
+        session_type = self.get_sessiontype()
+        if session_type == SessionTypes.race:
+            return True
+        else:
+            return False
+
+    def is_get_in_car_sessionstate(self):
+        """
+        Is it currently time to get in the car?
+        """
+        if self.ir['SessionState'] == IRSDK.SessionState.get_in_car:
+            return True
+        else:
+            return False
+
+    def is_warmup_sessionstate(self):
+        """
+        Is it currently warmup?
+        """
+        if self.ir['SessionState'] == IRSDK.SessionState.warmup:
+            return True
+        else:
+            return False
+
+    def is_parade_laps_sessionstate(self):
+        """
+        Is it currently parade laps?
+        """
+        if self.ir['SessionState'] == IRSDK.SessionState.parade_laps:
+            return True
+        else:
+            return False
+
+    def is_racing_sessionstate(self):
+        """
+        Is it currently a race?
+        """
+        if self.ir['SessionState'] == IRSDK.SessionState.racing:
+            return True
+        else:
+            return False
+
+    def is_checkered_sessionstate(self):
+        """
+        Is it currently checkered?
+        """
+        if self.ir['SessionState'] == IRSDK.SessionState.checkered:
+            return True
+        else:
+            return False
+
+    def is_cool_down_sessionstate(self):
+        """
+        Is it currently cool down?
+        """
+        if self.ir['SessionState'] == IRSDK.SessionState.cool_down:
+            return True
+        else:
+            return False
+
+    def is_race_session_pre_racing_sessionstate(self):
+        """
+        Is it currently before racing?
+        """
+        if self.ir['SessionState'] in [IRSDK.SessionState.get_in_car, IRSDK.SessionState.warmup, IRSDK.SessionState.parade_laps]:
+            return True
+        else:
+            return False
+
+    def get_sessionstate_name(self):
+        """
+        Is it currently before racing?
+        """
+        if self.is_get_in_car_sessionstate():
+            return "Get In Car"
+        elif self.is_warmup_sessionstate():
+            return "Warm Up"
+        elif self.is_parade_laps_sessionstate():
+            return "Parade Lap"
+        elif self.is_racing_sessionstate():
+            return "Racing"
+        elif self.is_checkered_sessionstate():
+            return "Checkered"
+        elif self.is_cool_down_sessionstate():
+            return "Cool Down"
+        else:
+            return "Unknown"
 
     def default_display(self, selected):
         self.options.default_display = selected
@@ -332,6 +485,8 @@ class MainWorker(QThread):
                     self.connected()
 
                 self.data_collection()
+                self.calculate_positions()
+                pprint(self.cars)
                 self.process_data()
 
             else:
@@ -342,6 +497,55 @@ class MainWorker(QThread):
                 for i in range(50):
                     if self._active:
                         sleep(0.1)
+
+    def calculate_positions(self):
+        if self.ir['SessionInfo']['Sessions'][self.ir['SessionNum']]['ResultsPositions']:
+            results = self.ir['SessionInfo']['Sessions'][self.ir['SessionNum']]['ResultsPositions']
+        # if no laps have been completed in this session, we will use the list of drivers from the previous session
+        elif self.ir['SessionInfo']['Sessions'][self.ir['SessionNum']-1]['ResultsPositions']:
+            results = self.ir['SessionInfo']['Sessions'][self.ir['SessionNum']-1]['ResultsPositions']
+        else:
+            results = []        
+
+        if len(results) > 0:
+            for car in results:
+                if car['ReasonOutId'] == 0:
+                    fullname = self.ir['DriverInfo']['Drivers'][car['CarIdx']]['UserName']
+                    namelist = fullname.split(" ")
+                    outlist = []
+                    outlist.append(namelist[0][0:1])
+                    lastname = str(namelist[-1])
+                    if lastname.lower() in ["jr", "ii", "iii"]:
+                        lastname = namelist[-2]
+                    outlist.append(lastname)
+                    initialname = '.'.join(outlist)
+
+                    if car['CarIdx'] not in self.cars:
+                        self.cars[car['CarIdx']] = asdict(Car())
+
+                    if self.ir['CarIdxLap'][car['CarIdx']] == 1 or self.ir['CarIdxLapDistPct'][car['CarIdx']] == 1:
+                        livelaps = car['LapsComplete']
+                    else:
+                        # a hack to work around the fact that iRacing uses 0 for both the lap before s/f and lap after s/f when the session goes green
+                        if self.is_race_session_pre_racing_sessionstate() and self.ir['CarIdxLapDistPct'][car['CarIdx']] > 0.5:
+                            livelaps = self.ir['CarIdxLapDistPct'][car['CarIdx']] - 1
+                        else:
+                            if self.cars[car['CarIdx']]['LiveLaps'] and self.cars[car['CarIdx']]['LiveLaps'] < 0 and self.ir['CarIdxLapDistPct'][car['CarIdx']] > 0.5:
+                                livelaps = self.ir['CarIdxLapDistPct'][car['CarIdx']] - 1
+                            else:
+                                livelaps = self.ir['CarIdxLap'][car['CarIdx']] + self.ir['CarIdxLapDistPct'][car['CarIdx']]
+
+                    self.cars[car['CarIdx']]['CarIdx'] = int(car['CarIdx'])
+                    self.cars[car['CarIdx']]['CarClassID'] = str(self.ir['DriverInfo']['Drivers'][car['CarIdx']]['CarClassID'])
+                    self.cars[car['CarIdx']]['CarNumber'] = str(self.ir['DriverInfo']['Drivers'][car['CarIdx']]['CarNumber'])
+                    self.cars[car['CarIdx']]['ClassPosition'] = int(car['ClassPosition'] + 1)
+                    self.cars[car['CarIdx']]['UserID'] = int(self.ir['DriverInfo']['Drivers'][car['CarIdx']]['UserID'])
+                    self.cars[car['CarIdx']]['DriverName'] = initialname
+                    self.cars[car['CarIdx']]['LiveLaps'] = livelaps
+                    self.cars[car['CarIdx']]['TeamName'] = str(self.ir['DriverInfo']['Drivers'][car['CarIdx']]['TeamName'])
+
+            return True
+        return False
 
     def update_data(self, attr, value):
         """
