@@ -25,7 +25,10 @@ from PyQt5.QtCore import (
 from window import Window, Dialog
 from pyirsdk import (
     IRSDK,
-    Flags
+    Flags,
+    SessionState,
+    TrkLoc,
+    TrkSurf
 )
 
 disable_warnings()
@@ -358,7 +361,7 @@ class MainWorker(QThread):
         """
         Is it currently time to get in the car?
         """
-        if self.ir['SessionState'] == IRSDK.SessionState.get_in_car:
+        if self.ir['SessionState'] == SessionState.get_in_car:
             return True
         else:
             return False
@@ -367,7 +370,7 @@ class MainWorker(QThread):
         """
         Is it currently warmup?
         """
-        if self.ir['SessionState'] == IRSDK.SessionState.warmup:
+        if self.ir['SessionState'] == SessionState.warmup:
             return True
         else:
             return False
@@ -376,7 +379,7 @@ class MainWorker(QThread):
         """
         Is it currently parade laps?
         """
-        if self.ir['SessionState'] == IRSDK.SessionState.parade_laps:
+        if self.ir['SessionState'] == SessionState.parade_laps:
             return True
         else:
             return False
@@ -385,7 +388,7 @@ class MainWorker(QThread):
         """
         Is it currently a race?
         """
-        if self.ir['SessionState'] == IRSDK.SessionState.racing:
+        if self.ir['SessionState'] == SessionState.racing:
             return True
         else:
             return False
@@ -394,7 +397,7 @@ class MainWorker(QThread):
         """
         Is it currently checkered?
         """
-        if self.ir['SessionState'] == IRSDK.SessionState.checkered:
+        if self.ir['SessionState'] == SessionState.checkered:
             return True
         else:
             return False
@@ -403,7 +406,7 @@ class MainWorker(QThread):
         """
         Is it currently cool down?
         """
-        if self.ir['SessionState'] == IRSDK.SessionState.cool_down:
+        if self.ir['SessionState'] == SessionState.cool_down:
             return True
         else:
             return False
@@ -412,7 +415,7 @@ class MainWorker(QThread):
         """
         Is it currently before racing?
         """
-        if self.ir['SessionState'] in [IRSDK.SessionState.get_in_car, IRSDK.SessionState.warmup, IRSDK.SessionState.parade_laps]:
+        if self.ir['SessionState'] in [SessionState.get_in_car, SessionState.warmup, SessionState.parade_laps]:
             return True
         else:
             return False
