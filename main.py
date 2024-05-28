@@ -120,6 +120,14 @@ def call_lametric_api(endpoint, data=None, notification_id=None):
             print("Timeout: ", errt)
 
 
+@dataclass
+class SessionTypes(object):
+    practice: str = "Practice"
+    qualify: str = "Qualify"
+    lonequalify: str = "Lone Qualify"
+    race: str = "Race"
+
+
 @dataclass_json
 @dataclass
 class Frame:
@@ -154,6 +162,7 @@ class Driver(object):
     license_string: str = None
     license_letter: str = None
     safety_rating: float = None
+    carclassid: int = None
 
 
 @dataclass
@@ -463,6 +472,13 @@ class MainWorker(QThread):
     def deactivate(self):
         self._active = False
 
+    def race_started(self):
+        if self.ir['SessionInfo']['Sessions'][self.ir['SessionNum']]['SessionType'] == "Race" \
+           and self.ir['SessionState'] == IRSDK.SessionState.racing:
+            return True
+        else:
+            return False
+
     def connected(self):
         for dvr in self.ir['DriverInfo']['Drivers']:
             if dvr['CarIdx'] == self.ir['DriverInfo']['DriverCarIdx']:
@@ -472,7 +488,8 @@ class MainWorker(QThread):
                 self.driver.license_string = dvr['LicString']
                 license_letter, safety_rating = dvr['LicString'].split(' ')
                 self.driver.license_letter = license_letter
-                self.driver.safety_rating = float(safety_rating)        
+                self.driver.safety_rating = float(safety_rating)      
+                self.driver.carclassid = dvr['CarClassID']  
         self.dismiss_notifications()
         self.send_ratings()
         self.signals.connected_to_iracing.emit()
@@ -559,6 +576,12 @@ class MainWorker(QThread):
         except KeyError:
             setattr(self.data, attr, None)
 
+    def driver_position(self):
+        """
+        If we're not in a live race session, just return the iRacing info. Else work out the current position of our hero
+        """
+
+
     def data_collection(self):
         """
         Runs on a loop that polls the iRacing client for driver data, flags, other info
@@ -566,10 +589,30 @@ class MainWorker(QThread):
         """
         self.ir.freeze_var_buffer_latest()
         
-        if int(self.ir['PlayerCarClassPosition']) > 0:
-            self.update_data('position', f"{int(self.ir['PlayerCarClassPosition'])} / {int(len(self.ir['DriverInfo']['Drivers']))}")
+        if self.race_started():
+            results = []
+            laps_complete = {}
+            results = self.ir['SessionInfo']['Sessions'][self.ir['SessionNum']]['ResultsPositions']
+            if len(results) > 0:
+                for car in results:
+                    if car['CarClassID'] == self.driver.carclassid:
+                        if car['ReasonOutId'] == 0:
+                            if bool(self.ir['CarIdxOnPitRoad'][car['CarIdx']]) or self.ir['CarIdxLap'][car['CarIdx']] < 0 or self.ir['CarIdxLapDistPct'][car['CarIdx']] < 0:
+                                laps_complete[car['CarIdx']] = car['LapsComplete']
+                            else:
+                                laps_complete[car['CarIdx']] = self.ir['CarIdxLap'][car['CarIdx']] + self.ir['CarIdxLapDistPct'][car['CarIdx']]
+
+                carsorder = [caridx for caridx, livelaps in sorted(laps_complete.items(), key=lambda item: item[1])]
+                for pos, caridx in enumerate(carsorder, 1):
+                    if caridx == self.driver.caridx:
+                        self.update_data('position', f"{int(pos)} / {int(len(self.ir['CarIdxClassPosition']))}")
+
         else:
-            self.update_data('position', f"{int(len(self.ir['DriverInfo']['Drivers']))} / {int(len(self.ir['DriverInfo']['Drivers']))}")
+            if int(self.ir['PlayerCarClassPosition']) > 0:
+                self.update_data('position', f"{int(self.ir['PlayerCarClassPosition'])} / {int(len(self.ir['CarIdxClassPosition']))}")
+            else:
+                self.update_data('position', f"{int(len(self.ir['CarIdxClassPosition']))} / {int(len(self.ir['CarIdxClassPosition']))}")
+
         
         if float(self.ir['LapBestLapTime']) > 0:
             minutes, seconds = divmod(float(self.ir['LapBestLapTime']), 60)
